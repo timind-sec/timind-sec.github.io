@@ -1,0 +1,209 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>AD—Attacking随笔 | Timind's café</title><meta name="author" content="Timind"><meta name="copyright" content="Timind"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="域渗透学习随笔（一）1、Kerberos协议以及在域中的鉴权机制基本概念相关术语解释如下：  Client： 访问服务的客户机 Server：提供服务的服务器 KDC(Key Distribution Center)：密钥分发中心，KDC由以下两个部分组成Authentication Service(AS)：身份验证服务Ticket Granting Service(TGS)：票据授予服务 Aut">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AD—Attacking随笔">
+<meta property="og:url" content="http://timind-sec.github.io/posts/AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/index.html">
+<meta property="og:site_name" content="Timind&#39;s café">
+<meta property="og:description" content="域渗透学习随笔（一）1、Kerberos协议以及在域中的鉴权机制基本概念相关术语解释如下：  Client： 访问服务的客户机 Server：提供服务的服务器 KDC(Key Distribution Center)：密钥分发中心，KDC由以下两个部分组成Authentication Service(AS)：身份验证服务Ticket Granting Service(TGS)：票据授予服务 Aut">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://timind-sec.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-04-08T13:07:57.000Z">
+<meta property="article:modified_time" content="2026-08-13T21:51:00.742Z">
+<meta property="article:author" content="Timind">
+<meta property="article:tag" content="域渗透学习随笔（一）">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://timind-sec.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "AD—Attacking随笔",
+  "url": "http://timind-sec.github.io/posts/AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/",
+  "image": "http://timind-sec.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-04-08T13:07:57.000Z",
+  "dateModified": "2026-08-13T21:51:00.742Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Timind",
+      "url": "http://timind-sec.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://timind-sec.github.io/posts/AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'AD—Attacking随笔',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/url(https:/c-ssl.duitang.com/uploads/item/201902/27/20190227220253_hhrtf.jpg));"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">AD—Attacking随笔</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">AD—Attacking随笔</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-04-08T13:07:57.000Z" title="发表于 2026-04-08 21:07:57">2026-04-08</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-13T21:51:00.742Z" title="更新于 2026-08-14 05:51:00">2026-08-14</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="域渗透学习随笔（一）"><a href="#域渗透学习随笔（一）" class="headerlink" title="域渗透学习随笔（一）"></a>域渗透学习随笔（一）</h1><h2 id="1、Kerberos协议以及在域中的鉴权机制"><a href="#1、Kerberos协议以及在域中的鉴权机制" class="headerlink" title="1、Kerberos协议以及在域中的鉴权机制"></a>1、Kerberos协议以及在域中的鉴权机制</h2><h3 id="基本概念"><a href="#基本概念" class="headerlink" title="基本概念"></a>基本概念</h3><p>相关术语解释如下：</p>
+<ul>
+<li>Client： 访问服务的客户机</li>
+<li>Server：提供服务的服务器</li>
+<li>KDC(Key Distribution Center)：密钥分发中心，KDC由以下两个部分组成<br>Authentication Service(AS)：身份验证服务<br>Ticket Granting Service(TGS)：票据授予服务</li>
+<li>Authentication Service(AS)：AS的作用是验证Client端的身份，验证通过之后，AS就会将TGT票据(Ticket Granting Ticket)给Client</li>
+<li>Ticket-Granting Ticket(TGT)：TGT对象的ID为TGC的值，服务器端通过TGC查询TGT</li>
+<li>Ticket Granting Service(TGS)：TGS的作用是用AS发送给Client的TGT换取访问Server端的ST(Server Ticket)给Client</li>
+<li>Ticket-Granting Cookie(TGC)：TGC的作用是存放用户身份认证凭证的Cookie，在浏览器和CAS Server间通讯时使用，是CAS Server用来明确用户身份的凭证，TGT封装了TGC值以及此Cookie值对应的用户信息</li>
+<li>Server Ticket(ST)：ST服务票据，由TGS服务发布</li>
+<li>Active Directory(AD)：活动目录</li>
+<li>Domain Controller(DC)：域控制器</li>
+</ul>
+<p>网上博客翻到的kerberos认证的流程图，还是比较直观的</p>
+<img src="/.io//AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/1d781272-1e2a-4c76-b50e-117aad06fa12.png" class title="1d781272-1e2a-4c76-b50e-117aad06fa12">
+
+<p>注意上图</p>
+<ol>
+<li>KDC是包括了AS和TGS两个服务，AS是用来接受域内主机（客户端）的第一次请求的，比如该主机想要访问域内的某个服务，需要向KDC中的AS发起请求，然后Kerberos校验通过之后就会返回一个TGT认购权证，整个过程就是AS-REQ到AS-REP</li>
+<li>申请访问服务的时候，客户端需要拿着TGT向KDC的另外一个认证服务——TGS申请服务票据，这个过程就是TGS-REQ，然后相对应的TGS分发放普奥局的就是TGS-REP</li>
+</ol>
+<h3 id="黄金票据攻击和白银票据攻击的区别"><a href="#黄金票据攻击和白银票据攻击的区别" class="headerlink" title="黄金票据攻击和白银票据攻击的区别"></a>黄金票据攻击和白银票据攻击的区别</h3><p>（1）黄金票据攻击主要是<strong>利用了krbtgt的账户 hash</strong>，那么攻击者就可以伪造自己想要的TGT，然后再申请自己想要的<strong>ST服务票据</strong>，整个过程主要是利用了Kerberos认证过程中TGS-REQ的安全问题来进行TGT的伪造，同时呢，攻击者可以利用伪造的TGS去访问域内的任何服务在 Kerberos 协议中，TGT 是由 <code>krbtgt</code> 用户的 Hash 进行加密和签名的。只要你拥有了 <code>krbtgt</code> 的 Hash，你就相当于拥有了：</p>
+<ol>
+<li><strong>全知全能的签名权：</strong> 你可以伪造 TGT 里的任何信息，比如把自己的 SID 改成 **Domain Admin (512)**。</li>
+<li><strong>超长有效期：</strong> 默认 TGT 有效期通常是 10 小时，但伪造的黄金票据可以设置为 <strong>10 年</strong>甚至更久。</li>
+<li><strong>无视密码修改：</strong> 即使受害用户修改了密码，只要 <code>krbtgt</code> 的 Hash 没变，黄金票据依然有效。</li>
+</ol>
+<p>（2）白银票据的威力在于它<strong>彻底跳过了 Kerberos 的前两个阶段</strong>，正常的流程应该是客户端向kdc申请TGT认购权证，然后再拿自己的TGT去向AS申请ST去访问域内服务，但白银票据攻击跳过了整个阶段，因为他利用了域内某个特定主机的hash并在本机上伪造ST，并拿着这个伪造的ST去访问该主机上的特定服务</p>
+<p>同时，<strong>因为它不经过 KDC（域控上的 Key Distribution Center），所以域控的日志里甚至不会留下任何认证记录，隐蔽性极高。</strong></p>
+<p>由于白银票据利用的是<strong>目标服务账户的 Hash</strong>（通常是计算机账户，例如 <code>DC01$</code>），你只需要拿到这台机器的本地管理员权限并导出 Hash 即可。</p>
+<p><strong>常见的服务类型（Service Type）：</strong></p>
+<ul>
+<li><strong>CIFS</strong>: 访问文件共享（SMB）。</li>
+<li><strong>HTTP</strong>: 访问 WinRM 或 Web 服务。</li>
+<li><strong>LDAP</strong>: 访问目录服务。</li>
+<li><strong>HOST</strong>: 允许通过计划任务（Scheduled Tasks）等方式执行命令。</li>
+</ul>
+<h1 id="2、SPN渗透以及Kerberoasting攻击"><a href="#2、SPN渗透以及Kerberoasting攻击" class="headerlink" title="2、SPN渗透以及Kerberoasting攻击"></a>2、SPN渗透以及Kerberoasting攻击</h1><h2 id="spn是什么"><a href="#spn是什么" class="headerlink" title="spn是什么"></a>spn是什么</h2><p>在之前我们对kerberos协议的学习过程中，我们发现有些主机在域中扮演了某一个特定服务的角色，也就是域中主机拿着ST去申请某个服务的权限，那么我们怎么识别这个服务呢，这里就提出了一个标识性的东西——spn。</p>
+<p>SPN(ServicePrincipal Names)服务主体名称，是服务实例(比如：HTTP、SMB、MySQL等服务)的唯一标识符。Kerberos认证过程使用SPN将服务实例与服务登录账户相关联，如果想使用 Kerberos 协议来认证服务，那么必须正确配置SPN。</p>
+<p>SPN 的核心作用，是为 <strong>Kerberos</strong> 这个域环境下的安全认证协议服务的。它的作用很像一个“中间人”或“翻译官”，把客户端想要访问的服务，和运行这个服务的域账号关联起来 </p>
+<p>具体过程可以分为几步：</p>
+<ol>
+<li><strong>客户端发起请求</strong>：当一台电脑（客户端）想访问另一台服务器上的服务（比如 SQL Server 数据库）时，它会告诉域控制器（KDC）：“我想访问 <code>MSSQLSvc/sqlserver.domain.com</code> 这个服务” </li>
+<li><strong>KDC 查找“门牌号”</strong>：域控制器接到请求后，就会拿着这个“门牌号”（也就是 SPN）去 Active Directory 数据库里查，看它是注册在哪个具体的计算机或域用户账号名下的 </li>
+<li><strong>关联账号并颁发“入场券”</strong>：找到关联的账号后，域控制器就会用这个账号的密码哈希，专门为客户端加密生成一张用于访问该服务的“入场券”（ST票据） </li>
+<li><strong>客户端凭“券”入场</strong>：客户端拿着这张“入场券”去找目标服务器。服务器用自己账号的密码哈希解密验证票据，如果通过，就允许客户端访问了</li>
+</ol>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io">Timind</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io/posts/AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/">http://timind-sec.github.io/posts/AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://timind-sec.github.io" target="_blank">Timind's café</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/%E5%9F%9F%E6%B8%97%E9%80%8F%E5%AD%A6%E4%B9%A0%E9%9A%8F%E7%AC%94%EF%BC%88%E4%B8%80%EF%BC%89/">域渗透学习随笔（一）</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/" title="TemplatesImpl利用链分析"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">TemplatesImpl利用链分析</div></div><div class="info-2"><div class="info-item-1">前言在看java反序列化漏洞的时候发现很多时候需要去打不出网的手法，于是乎TemplatesImpl利用链就应运而生，java反序列化除开远程加载恶意的JNDI服务，还有这种直接识别恶意字节码并加载恶意类的利用方式。 javassist前置知识首先我们在pom.xml里边添加一下依赖： xml 12345&lt;dependency&gt;    &lt;groupId&gt;org.javassist&lt;/groupId&gt;    &lt;artifactId&gt;javassist&lt;/artifactId&gt;    &lt;version&gt;3.22.0-GA&lt;/version&gt;&lt;/dependency&gt;  通常我们需要将.java文件编译成.class才能正常执行，在命名行中我们通常使用javac来编译，javasist是一个处理字节码的类库，能够动态修改class字节码文件，也可以直接读取到一个java类的字节码，javassist的用法： ​	1.通过调用ClassPool.get()获取一个CtClass对象。 ​	2....</div></div></div></a><a class="pagination-related" href="/posts/zipslip%E6%94%BB%E5%87%BB%E5%88%9D%E6%8E%A2%E4%BB%A5%E5%8F%8A%E5%9C%A8ctf%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8/" title="zipslip攻击初探以及在ctf中的应用"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">zipslip攻击初探以及在ctf中的应用</div></div><div class="info-2"><div class="info-item-1">一、Zip Slip攻击原理1.1  什么是Zip SlipZip Slip 是一种目录遍历（Path Traversal）漏洞，发生在解压 ZIP 文件时未对压缩包内的文件名进行安全校验。攻击者可以构造包含 ../ 路径穿越序列的恶意 ZIP 文件，在解压时将文件写入预期目录之外的任意位置。 其实说白了就是后端代码没有对攻击者上传的压缩包中的文件名进行校验，使得像..&#x2F;..&#x2F;xixi这样的文件能够解压至某个特定目录底下，而且后端代码还是直接将这种带有路径穿越的文件名拼接到特定目录后的，从而导致zip slip攻击。 1.2 漏洞代码示例123456789101112// ❌ 存在漏洞的代码public void extractArchive(String destinationDir, ZipFile zip) &#123;    Enumeration&lt;? extends ZipEntry&gt; entries = zip.entries();    while (entries.hasMoreElements()) &#123;        Z...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Timind</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">9</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%9F%9F%E6%B8%97%E9%80%8F%E5%AD%A6%E4%B9%A0%E9%9A%8F%E7%AC%94%EF%BC%88%E4%B8%80%EF%BC%89"><span class="toc-number">1.</span> <span class="toc-text">域渗透学习随笔（一）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1%E3%80%81Kerberos%E5%8D%8F%E8%AE%AE%E4%BB%A5%E5%8F%8A%E5%9C%A8%E5%9F%9F%E4%B8%AD%E7%9A%84%E9%89%B4%E6%9D%83%E6%9C%BA%E5%88%B6"><span class="toc-number">1.1.</span> <span class="toc-text">1、Kerberos协议以及在域中的鉴权机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%9F%BA%E6%9C%AC%E6%A6%82%E5%BF%B5"><span class="toc-number">1.1.1.</span> <span class="toc-text">基本概念</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E9%BB%84%E9%87%91%E7%A5%A8%E6%8D%AE%E6%94%BB%E5%87%BB%E5%92%8C%E7%99%BD%E9%93%B6%E7%A5%A8%E6%8D%AE%E6%94%BB%E5%87%BB%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="toc-number">1.1.2.</span> <span class="toc-text">黄金票据攻击和白银票据攻击的区别</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2%E3%80%81SPN%E6%B8%97%E9%80%8F%E4%BB%A5%E5%8F%8AKerberoasting%E6%94%BB%E5%87%BB"><span class="toc-number">2.</span> <span class="toc-text">2、SPN渗透以及Kerberoasting攻击</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#spn%E6%98%AF%E4%BB%80%E4%B9%88"><span class="toc-number">2.1.</span> <span class="toc-text">spn是什么</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/" title="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</a><time datetime="2026-07-21T14:31:00.000Z" title="发表于 2026-07-21 22:31:00">2026-07-21</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/" title="浅谈RASP原理及绕过">浅谈RASP原理及绕过</a><time datetime="2026-05-22T10:42:04.000Z" title="发表于 2026-05-22 18:42:04">2026-05-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/" title="TemplatesImpl利用链分析">TemplatesImpl利用链分析</a><time datetime="2026-05-19T09:39:53.000Z" title="发表于 2026-05-19 17:39:53">2026-05-19</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/" title="AD—Attacking随笔">AD—Attacking随笔</a><time datetime="2026-04-08T13:07:57.000Z" title="发表于 2026-04-08 21:07:57">2026-04-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/zipslip%E6%94%BB%E5%87%BB%E5%88%9D%E6%8E%A2%E4%BB%A5%E5%8F%8A%E5%9C%A8ctf%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8/" title="zipslip攻击初探以及在ctf中的应用">zipslip攻击初探以及在ctf中的应用</a><time datetime="2026-03-28T12:15:58.000Z" title="发表于 2026-03-28 20:15:58">2026-03-28</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Timind</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.3</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>

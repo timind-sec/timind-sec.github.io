@@ -1,0 +1,179 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>TemplatesImpl利用链分析 | Timind's café</title><meta name="author" content="Timind"><meta name="copyright" content="Timind"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="前言在看java反序列化漏洞的时候发现很多时候需要去打不出网的手法，于是乎TemplatesImpl利用链就应运而生，java反序列化除开远程加载恶意的JNDI服务，还有这种直接识别恶意字节码并加载恶意类的利用方式。 javassist前置知识首先我们在pom.xml里边添加一下依赖： xml 12345&lt;dependency&gt;    &lt;groupId&gt;org.javass">
+<meta property="og:type" content="article">
+<meta property="og:title" content="TemplatesImpl利用链分析">
+<meta property="og:url" content="http://timind-sec.github.io/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/index.html">
+<meta property="og:site_name" content="Timind&#39;s café">
+<meta property="og:description" content="前言在看java反序列化漏洞的时候发现很多时候需要去打不出网的手法，于是乎TemplatesImpl利用链就应运而生，java反序列化除开远程加载恶意的JNDI服务，还有这种直接识别恶意字节码并加载恶意类的利用方式。 javassist前置知识首先我们在pom.xml里边添加一下依赖： xml 12345&lt;dependency&gt;    &lt;groupId&gt;org.javass">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://timind-sec.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-05-19T09:39:53.000Z">
+<meta property="article:modified_time" content="2026-08-13T21:51:01.780Z">
+<meta property="article:author" content="Timind">
+<meta property="article:tag" content="TemplatesImpl利用链分析">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://timind-sec.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "TemplatesImpl利用链分析",
+  "url": "http://timind-sec.github.io/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/",
+  "image": "http://timind-sec.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-05-19T09:39:53.000Z",
+  "dateModified": "2026-08-13T21:51:01.780Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Timind",
+      "url": "http://timind-sec.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://timind-sec.github.io/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'TemplatesImpl利用链分析',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/url(https:/c-ssl.duitang.com/uploads/item/201902/27/20190227220253_hhrtf.jpg));"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">TemplatesImpl利用链分析</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">TemplatesImpl利用链分析</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-19T09:39:53.000Z" title="发表于 2026-05-19 17:39:53">2026-05-19</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-13T21:51:01.780Z" title="更新于 2026-08-14 05:51:01">2026-08-14</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在看java反序列化漏洞的时候发现很多时候需要去打不出网的手法，于是乎TemplatesImpl利用链就应运而生，java反序列化除开远程加载恶意的JNDI服务，还有这种直接识别恶意字节码并加载恶意类的利用方式。</p>
+<h1 id="javassist前置知识"><a href="#javassist前置知识" class="headerlink" title="javassist前置知识"></a>javassist前置知识</h1><p>首先我们在<code>pom.xml</code>里边添加一下依赖：</p>
+<p>xml</p>
+<figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.javassist<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>javassist<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.22.0-GA<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
+
+<p>通常我们需要将<code>.java</code>文件编译成<code>.class</code>才能正常执行，在命名行中我们通常使用<code>javac</code>来编译，<code>javasist</code>是一个处理字节码的类库，能够动态修改<code>class</code>字节码文件，也可以直接读取到一个<code>java</code>类的字节码，javassist的用法：</p>
+<p>​	1.通过调用<code>ClassPool.get()</code>获取一个<code>CtClass</code>对象。</p>
+<p>​	2.修改它，并且调用CtClass对象的<code>writeFile()</code>或者<code>toBytecode()</code>方法获得修改后的class文件</p>
+<h2 id="javassist-Demo"><a href="#javassist-Demo" class="headerlink" title="javassist Demo"></a>javassist Demo</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//Javassist3ClassLoader.java 用于后续class文件加载</span></span><br><span class="line"><span class="keyword">package</span> org.byron4j.cookbook.javaagent;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Javassist3ClassLoader</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">say</span><span class="params">()</span>&#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;Hello!&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//Javassist3ClassLoaderTest.java 测试类，用于加载指定类并调用其中的方法</span></span><br><span class="line"><span class="keyword">package</span> org.byron4j.cookbook.javaagent;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> javassist.*;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Javassist3ClassLoaderTest</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> NotFoundException, CannotCompileException, IllegalAccessException, InstantiationException &#123;</span><br><span class="line">        <span class="type">ClassPool</span> <span class="variable">cp</span> <span class="operator">=</span> ClassPool.getDefault();</span><br><span class="line">        <span class="type">CtClass</span> <span class="variable">cc</span> <span class="operator">=</span> cp.get(<span class="string">&quot;org.byron4j.cookbook.javaagent.Javassist3ClassLoader&quot;</span>);</span><br><span class="line">        <span class="type">CtMethod</span> <span class="variable">m</span> <span class="operator">=</span> cc.getDeclaredMethod(<span class="string">&quot;say&quot;</span>);</span><br><span class="line"></span><br><span class="line">        m.insertBefore(<span class="string">&quot;System.out.println(\&quot;Ready to say:\&quot;);&quot;</span>);</span><br><span class="line">        <span class="type">Class</span> <span class="variable">c</span> <span class="operator">=</span> cc.toClass();</span><br><span class="line">        <span class="type">Javassist3ClassLoader</span> <span class="variable">javassist3ClassLoader</span> <span class="operator">=</span> (Javassist3ClassLoader)c.newInstance();</span><br><span class="line">        javassist3ClassLoader.say();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>ClassPool 是 Javassist 的类池，负责管理类字节码。getDefault() 返回默认的类池，它会扫描系统类路径（包括当前项目的 classpath）来查找类，后续调用get方法，从类池中返回我们需要调用的类，然后再利用反射机制，来获取该类中的say方法。<br><code>m.insertBefore(&quot;System.out.println(\&quot;Ready to say:\&quot;);&quot;);</code>在方法体开头插入一行 Java 源代码。这里插入的代码是输出 “Ready to say:”。Javassist 允许插入源代码片段（会被编译为字节码插入到方法中）。</p>
+<p><code>Class c = cc.toClass();</code>将修改的字节码重新编译成class文件，并实例化出一个对象，并调用say方法，整一个的javassist加载类方法的流程就此结束。</p>
+<p>输出结果：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Ready to say:</span><br><span class="line">Hello!</span><br></pre></td></tr></table></figure>
+
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io">Timind</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/">http://timind-sec.github.io/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://timind-sec.github.io" target="_blank">Timind's café</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/">TemplatesImpl利用链分析</a></div><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/" title="浅谈RASP原理及绕过"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">浅谈RASP原理及绕过</div></div><div class="info-2"><div class="info-item-1">1-前言这几天有点沉浸在面经的海洋中了，无意之中看到了Z3r0佬提供的ct红队面经，里面就提到了一个非常熟悉但又陌生的概念——RASP防护，笔者遂浅学了一些关于RASP的工作原理及绕过方式，下面是本人学习笔记。【如有错误，还请纠正】 2-RASP介绍【官方】RASP是一种安全技术，旨在通过在应用程序运行时实施保护机制来增强应用程序的安全性。它使得应用程序能够实时监控和防御潜在的攻击，而不依赖于外部的安全设备或控制措施。因为从 JDK 1.5 开始，Java 提供了一种动态代理机制，允许代理检测在 JVM 中运行的服务，通过插桩的方式修改方法的字节码，而 RASP 实际上就是通过 hook 系统的关键函数实现防护。 其实主要说白了就是，RASP他不同于平时我们所见的waf，常规的waf只针对于攻击者的直接攻击流量，也就是各个路由中添加一道利用提前写好各种规则的防火墙，然而这种只判断直接流量的机制，如今却容易被攻击者精心构造的各种编码、混淆的payload绕过，所以就有了这么一个防御机制：RASP，它通过javaagent机制，随时跟踪攻击者的行为，比如：用户输入直接拼进 SQL →...</div></div></div></a><a class="pagination-related" href="/posts/AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/" title="AD—Attacking随笔"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">AD—Attacking随笔</div></div><div class="info-2"><div class="info-item-1">域渗透学习随笔（一）1、Kerberos协议以及在域中的鉴权机制基本概念相关术语解释如下：  Client： 访问服务的客户机 Server：提供服务的服务器 KDC(Key Distribution Center)：密钥分发中心，KDC由以下两个部分组成Authentication Service(AS)：身份验证服务Ticket Granting Service(TGS)：票据授予服务 Authentication Service(AS)：AS的作用是验证Client端的身份，验证通过之后，AS就会将TGT票据(Ticket Granting Ticket)给Client Ticket-Granting Ticket(TGT)：TGT对象的ID为TGC的值，服务器端通过TGC查询TGT Ticket Granting Service(TGS)：TGS的作用是用AS发送给Client的TGT换取访问Server端的ST(Server Ticket)给Client Ticket-Granting Cookie(TGC)：TGC的作用是存放用户身份认证凭证的Cookie，在浏览器和...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Timind</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">9</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#javassist%E5%89%8D%E7%BD%AE%E7%9F%A5%E8%AF%86"><span class="toc-number">2.</span> <span class="toc-text">javassist前置知识</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#javassist-Demo"><span class="toc-number">2.1.</span> <span class="toc-text">javassist Demo</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/" title="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</a><time datetime="2026-07-21T14:31:00.000Z" title="发表于 2026-07-21 22:31:00">2026-07-21</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/" title="浅谈RASP原理及绕过">浅谈RASP原理及绕过</a><time datetime="2026-05-22T10:42:04.000Z" title="发表于 2026-05-22 18:42:04">2026-05-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/" title="TemplatesImpl利用链分析">TemplatesImpl利用链分析</a><time datetime="2026-05-19T09:39:53.000Z" title="发表于 2026-05-19 17:39:53">2026-05-19</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/AD%E2%80%94Attacking%E9%9A%8F%E7%AC%94/" title="AD—Attacking随笔">AD—Attacking随笔</a><time datetime="2026-04-08T13:07:57.000Z" title="发表于 2026-04-08 21:07:57">2026-04-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/zipslip%E6%94%BB%E5%87%BB%E5%88%9D%E6%8E%A2%E4%BB%A5%E5%8F%8A%E5%9C%A8ctf%E4%B8%AD%E7%9A%84%E5%BA%94%E7%94%A8/" title="zipslip攻击初探以及在ctf中的应用">zipslip攻击初探以及在ctf中的应用</a><time datetime="2026-03-28T12:15:58.000Z" title="发表于 2026-03-28 20:15:58">2026-03-28</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Timind</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.3</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
