@@ -7,7 +7,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://timind-sec.github.io/img/avatar.jpg">
 <meta property="article:published_time" content="2026-07-21T14:31:00.000Z">
-<meta property="article:modified_time" content="2026-08-13T22:08:01.526Z">
+<meta property="article:modified_time" content="2026-08-17T23:12:34.971Z">
 <meta property="article:author" content="Timind">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="http://timind-sec.github.io/img/avatar.jpg"><script type="application/ld+json">{
@@ -17,7 +17,7 @@
   "url": "http://timind-sec.github.io/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/",
   "image": "http://timind-sec.github.io/img/avatar.jpg",
   "datePublished": "2026-07-21T14:31:00.000Z",
-  "dateModified": "2026-08-13T22:08:01.526Z",
+  "dateModified": "2026-08-17T23:12:34.971Z",
   "author": [
     {
       "@type": "Person",
@@ -158,7 +158,7 @@
   isHighlightShrink: false,
   isToc: true,
   pageType: 'post'
-}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/img/background.jpg);"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/top_img2.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-07-21T14:31:00.000Z" title="发表于 2026-07-21 22:31:00">2026-07-21</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-13T22:08:01.526Z" title="更新于 2026-08-14 06:08:01">2026-08-14</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Fastjson-1-2-66–1-2-83-JsonType-SSRF-→-RCE-漏洞学习笔记"><a href="#Fastjson-1-2-66–1-2-83-JsonType-SSRF-→-RCE-漏洞学习笔记" class="headerlink" title="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记"></a>Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</h1><blockquote>
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/img/background.jpg);"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/top_img2.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-07-21T14:31:00.000Z" title="发表于 2026-07-21 22:31:00">2026-07-21</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-17T23:12:34.971Z" title="更新于 2026-08-18 07:12:34">2026-08-18</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="Fastjson-1-2-66–1-2-83-JsonType-SSRF-→-RCE-漏洞学习笔记"><a href="#Fastjson-1-2-66–1-2-83-JsonType-SSRF-→-RCE-漏洞学习笔记" class="headerlink" title="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记"></a>Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</h1><blockquote>
 <p>复现环境：JDK 8u202 + fastjson 1.2.83 + Spring Boot Loader 2.7.18<br>复现日期：2026-07-21</p>
 </blockquote>
 <hr>
@@ -514,7 +514,8 @@
 </tr>
 </tbody></table>
 <hr>
-<h2 id="八、攻击成功截图"><a href="#八、攻击成功截图" class="headerlink" title="八、攻击成功截图"></a>八、攻击成功截图</h2><p><img src="D:\pentest-notes\blog\blog\source_posts\fastjson无gadget绕过RCE.assets\9c608e3ec7593dd5731a60f13258ea09.jpg" alt="9c608e3ec7593dd5731a60f13258ea09"></p>
+<h2 id="八、攻击成功截图"><a href="#八、攻击成功截图" class="headerlink" title="八、攻击成功截图"></a>八、攻击成功截图</h2><img src="/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/9c608e3ec7593dd5731a60f13258ea09.jpg" class="" title="9c608e3ec7593dd5731a60f13258ea09">
+
 <p><strong>截图应包含以下关键证据：</strong></p>
 <ol>
 <li><input disabled="" type="checkbox"> Victim 控制台显示 <code>ClassLoader: LaunchedURLClassLoader</code> 和 <code>SafeMode: OFF</code></li>

