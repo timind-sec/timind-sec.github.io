@@ -1,0 +1,267 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>OGNL表达式注入以及在Struts2框架中的漏洞利用 | Timind's café</title><meta name="author" content="Timind"><meta name="copyright" content="Timind"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="OGNL表达式基础Java中的对象图123456789101112131415Class SchoolMaster&#123;    String name &#x3D; &quot;tianshubi&quot;;&#125;Class School&#123;    String name &#x3D; &quot;ncepu&quot;;    SchoolMaster schoolMaster;&#125;C">
+<meta property="og:type" content="article">
+<meta property="og:title" content="OGNL表达式注入以及在Struts2框架中的漏洞利用">
+<meta property="og:url" content="http://timind-sec.github.io/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/index.html">
+<meta property="og:site_name" content="Timind&#39;s café">
+<meta property="og:description" content="OGNL表达式基础Java中的对象图123456789101112131415Class SchoolMaster&#123;    String name &#x3D; &quot;tianshubi&quot;;&#125;Class School&#123;    String name &#x3D; &quot;ncepu&quot;;    SchoolMaster schoolMaster;&#125;C">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://timind-sec.github.io/img/avatar.jpg">
+<meta property="article:published_time" content="2026-08-18T20:11:46.000Z">
+<meta property="article:modified_time" content="2026-08-25T18:34:11.209Z">
+<meta property="article:author" content="Timind">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://timind-sec.github.io/img/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "OGNL表达式注入以及在Struts2框架中的漏洞利用",
+  "url": "http://timind-sec.github.io/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/",
+  "image": "http://timind-sec.github.io/img/avatar.jpg",
+  "datePublished": "2026-08-18T20:11:46.000Z",
+  "dateModified": "2026-08-25T18:34:11.209Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Timind",
+      "url": "http://timind-sec.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.svg"><link rel="canonical" href="http://timind-sec.github.io/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'OGNL表达式注入以及在Struts2框架中的漏洞利用',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/img/background.jpg);"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/top_img2.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">OGNL表达式注入以及在Struts2框架中的漏洞利用</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">OGNL表达式注入以及在Struts2框架中的漏洞利用</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-08-18T20:11:46.000Z" title="发表于 2026-08-19 04:11:46">2026-08-19</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-08-25T18:34:11.209Z" title="更新于 2026-08-26 02:34:11">2026-08-26</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="OGNL表达式基础"><a href="#OGNL表达式基础" class="headerlink" title="OGNL表达式基础"></a>OGNL表达式基础</h1><h2 id="Java中的对象图"><a href="#Java中的对象图" class="headerlink" title="Java中的对象图"></a>Java中的对象图</h2><figure class="highlight abnf"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">Class SchoolMaster&#123;</span><br><span class="line">    String name <span class="operator">=</span> <span class="string">&quot;tianshubi&quot;</span><span class="comment">;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Class School</span><br><span class="line">&#123;</span><br><span class="line">    String name <span class="operator">=</span> <span class="string">&quot;ncepu&quot;</span><span class="comment">;</span></span><br><span class="line">    SchoolMaster schoolMaster<span class="comment">;</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">Class Student</span><br><span class="line">&#123;</span><br><span class="line">    String name <span class="operator">=</span> <span class="string">&quot;xiaoming&quot;</span><span class="comment">;</span></span><br><span class="line">    School school<span class="comment">;</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到三者的关系图非常明确，Student里边有个school类，这叫做<strong>引用类型变量</strong>，指向了School对象，默认值为null，但当实例化Student类之后呢，就会访问到School里的另外一个引用类型变量schoolMaster，三者为自下而上的访问关系，不过现在这些类里边也没有定义任何的方法，只是赋了值</p>
+<p>那么其实这三者其实是形成了一个对象图，类似这样</p>
+<figure class="highlight nix"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">┌─────────────┐         ┌────────────────────┐         ┌─────────────────┐</span><br><span class="line">│   Student   │         │       School       │         │  SchoolMaster   │</span><br><span class="line">│             │         │                    │         │                 │</span><br><span class="line">│ <span class="params">name:</span>       │         │ <span class="params">name:</span>              │         │ <span class="params">name:</span>           │</span><br><span class="line">│ <span class="string">&quot;xiaoming&quot;</span>  │ ────▶   │ <span class="string">&quot;ncepu&quot;</span>            │ ────▶   │ <span class="string">&quot;tianshubi&quot;</span>     │</span><br><span class="line">│             │         │                    │         │                 │</span><br><span class="line">│ <span class="params">school:</span> ────┘         │ <span class="params">schoolMaster:</span> ────┘         │                 │</span><br><span class="line">└─────────────┘         └────────────────────┘         └─────────────────┘</span><br></pre></td></tr></table></figure>
+
+<p>而OGNL就是一个能够更加简洁表示这种对象图的表达式，在OGNL表达式中，三者属性可这样表示：</p>
+<figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="selector-id">#student</span><span class="selector-class">.name</span>                    → <span class="string">&quot;xiaoming&quot;</span></span><br><span class="line"><span class="selector-id">#student</span><span class="selector-class">.school</span><span class="selector-class">.name</span>             → <span class="string">&quot;ncepu&quot;</span>  </span><br><span class="line"><span class="selector-id">#student</span><span class="selector-class">.school</span><span class="selector-class">.schoolMaster</span><span class="selector-class">.name</span> → <span class="string">&quot;tianshubi&quot;</span></span><br></pre></td></tr></table></figure>
+
+<p>具体怎么实现的？OGNL表达式其实是有“三要素”的，我们可以新建一个OGNLDemo看看其三要素：OGNL具有三要素：表达式（expression）、根对象（root）和上下文对象（context）。</p>
+<h2 id="OGNL三要素"><a href="#OGNL三要素" class="headerlink" title="OGNL三要素"></a>OGNL三要素</h2><ul>
+<li>表达式（expression）：表达式是整个OGNL的核心，通过表达式来告诉OGNL需要执行什么操作</li>
+<li>根对象（root）：root可以理解为OGNL的操作对象，OGNL可以对root进行取值或写值等操作，表达式规定了“做什么”，而根对象则规定了“对谁操作”。实际上根对象所在的环境就是 OGNL 的上下文对象环境</li>
+<li>上下文对象（context）：context可以理解为对象运行的上下文环境，context以MAP的结构、利用键值对关系来描述对象中的属性以及值</li>
+</ul>
+<p>pom.xml：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">&lt;dependencies&gt;</span><br><span class="line">    &lt;dependency&gt;</span><br><span class="line">        &lt;groupId&gt;ognl&lt;/groupId&gt;</span><br><span class="line">        &lt;artifactId&gt;ognl&lt;/artifactId&gt;</span><br><span class="line">        &lt;version&gt;3.0.8&lt;/version&gt;</span><br><span class="line">    &lt;/dependency&gt;</span><br><span class="line">&lt;/dependencies&gt;</span><br></pre></td></tr></table></figure>
+
+<p>SchoolMaster.java</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.example;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">SchoolMaster</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> <span class="string">&quot;tianshubi&quot;</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>School.java</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.example;</span><br><span class="line"></span><br><span class="line"><span class="keyword">class</span> <span class="title class_">School</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> <span class="string">&quot;ncepu&quot;</span>;</span><br><span class="line">    <span class="keyword">public</span> SchoolMaster schoolMaster;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Student.java</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.example;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Student</span> &#123;</span><br><span class="line"><span class="keyword">public</span> <span class="type">String</span> <span class="variable">name</span> <span class="operator">=</span> <span class="string">&quot;xiaoming&quot;</span>;</span><br><span class="line"><span class="keyword">public</span> School school;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>Main.java</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">package</span> org.example;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> ognl.Ognl;</span><br><span class="line"><span class="keyword">import</span> ognl.OgnlContext;</span><br><span class="line"><span class="keyword">import</span> ognl.OgnlException;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.util.HashMap;</span><br><span class="line"><span class="keyword">import</span> java.util.Map;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> org.example.School;</span><br><span class="line"><span class="keyword">import</span> org.example.SchoolMaster;</span><br><span class="line"><span class="keyword">import</span> org.example.Student;</span><br><span class="line"></span><br><span class="line"><span class="comment">// --- 定义你的三个类（为了简洁，都放在同一个文件中） ---</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Main</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> OgnlException &#123;</span><br><span class="line">        <span class="comment">// 1. 创建对象并建立完整的对象图</span></span><br><span class="line">        <span class="type">SchoolMaster</span> <span class="variable">master</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">SchoolMaster</span>();   <span class="comment">// 校长</span></span><br><span class="line">        <span class="type">School</span> <span class="variable">school</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">School</span>();               <span class="comment">// 学校</span></span><br><span class="line">        <span class="type">Student</span> <span class="variable">student</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Student</span>();            <span class="comment">// 学生</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 建立引用关系（这是关键，否则会出现空指针）</span></span><br><span class="line">        student.school = school;           <span class="comment">// 小明就读于这所学校</span></span><br><span class="line">        school.schoolMaster = master;      <span class="comment">// 这所学校的校长是这位校长</span></span><br><span class="line"></span><br><span class="line">        <span class="comment">// 2. 创建 OGNL 上下文</span></span><br><span class="line">        <span class="comment">//    这里把 student 对象放入根对象（Root Object），</span></span><br><span class="line">        <span class="comment">//    这样在 OGNL 表达式中可以直接访问它的属性</span></span><br><span class="line">        <span class="type">OgnlContext</span> <span class="variable">context</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">OgnlContext</span>();</span><br><span class="line">        context.setRoot(student);          <span class="comment">// 将 student 设为根对象</span></span><br><span class="line">        <span class="comment">// 额外放一个变量，演示 # 号用法</span></span><br><span class="line">        context.put(<span class="string">&quot;customVar&quot;</span>, <span class="string">&quot;我是自定义变量&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 3. 准备要执行的 OGNL 表达式</span></span><br><span class="line">        Map&lt;String, String&gt; expressions = <span class="keyword">new</span> <span class="title class_">HashMap</span>&lt;&gt;();</span><br><span class="line">        <span class="comment">// a. 直接访问根对象的属性 (从 student 开始导航)</span></span><br><span class="line">        expressions.put(<span class="string">&quot;1. 学生姓名&quot;</span>, <span class="string">&quot;name&quot;</span>);</span><br><span class="line">        expressions.put(<span class="string">&quot;2. 学校名称&quot;</span>, <span class="string">&quot;school.name&quot;</span>);</span><br><span class="line">        expressions.put(<span class="string">&quot;3. 校长姓名&quot;</span>, <span class="string">&quot;school.schoolMaster.name&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// b. 使用 # 访问上下文中的自定义变量</span></span><br><span class="line">        expressions.put(<span class="string">&quot;4. 访问自定义变量&quot;</span>, <span class="string">&quot;#customVar&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// c. 更复杂的表达式：调用方法、逻辑运算、三元操作符等</span></span><br><span class="line">        expressions.put(<span class="string">&quot;5. 字符串连接&quot;</span>, <span class="string">&quot;&#x27;校长是: &#x27; + school.schoolMaster.name&quot;</span>);</span><br><span class="line">        expressions.put(<span class="string">&quot;6. 三目运算&quot;</span>, <span class="string">&quot;school.name == &#x27;ncepu&#x27; ? &#x27;是华电&#x27; : &#x27;不是华电&#x27;&quot;</span>);</span><br><span class="line">        expressions.put(<span class="string">&quot;7. 调用 toUpperCase 方法&quot;</span>, <span class="string">&quot;name.toUpperCase()&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="comment">// 4. 执行并输出结果</span></span><br><span class="line">        System.out.println(<span class="string">&quot;========== OGNL 表达式执行结果 ==========&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;当前根对象 (Root): &quot;</span> + student);</span><br><span class="line">        System.out.println(<span class="string">&quot;对象关系: student.school -&gt; school, school.schoolMaster -&gt; master\n&quot;</span>);</span><br><span class="line"></span><br><span class="line">        <span class="keyword">for</span> (Map.Entry&lt;String, String&gt; entry : expressions.entrySet()) &#123;</span><br><span class="line">            <span class="type">String</span> <span class="variable">description</span> <span class="operator">=</span> entry.getKey();</span><br><span class="line">            <span class="type">String</span> <span class="variable">expression</span> <span class="operator">=</span> entry.getValue();</span><br><span class="line">            <span class="keyword">try</span> &#123;</span><br><span class="line">                <span class="comment">// 核心方法: Ognl.getValue(表达式, 上下文, 根对象)</span></span><br><span class="line">                <span class="type">Object</span> <span class="variable">result</span> <span class="operator">=</span> Ognl.getValue(expression, context, context.getRoot());</span><br><span class="line">                System.out.printf(<span class="string">&quot;%-15s | %-30s | 结果: %s%n&quot;</span>,</span><br><span class="line">                        description, expression, result);</span><br><span class="line">            &#125; <span class="keyword">catch</span> (OgnlException e) &#123;</span><br><span class="line">                System.err.printf(<span class="string">&quot;%-15s | %-30s | 执行失败: %s%n&quot;</span>,</span><br><span class="line">                        description, expression, e.getMessage());</span><br><span class="line">            &#125;</span><br><span class="line">        &#125;</span><br><span class="line"></span><br><span class="line">        System.out.println(<span class="string">&quot;\n========== 演示结束 ==========&quot;</span>);</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>执行后输出：</p>
+<figure class="highlight coq"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">========== OGNL 表达式执行结果 ==========</span><br><span class="line">当前根对象 (Root): org.example.Student@<span class="number">1</span>d44bcfa</span><br><span class="line">对象关系: student.school -&gt; school, school.schoolMaster -&gt; master</span><br><span class="line"></span><br><span class="line"><span class="number">1.</span> 学生姓名         | <span class="type">name</span>                           | <span class="type">结果: xiaoming</span></span><br><span class="line"><span class="number">2.</span> 学校名称         | <span class="type">school</span>.name                    | <span class="type">结果: ncepu</span></span><br><span class="line"><span class="number">4.</span> 访问自定义变量      | <span class="type">#customVar</span>                     | <span class="type">结果: 我是自定义变量</span></span><br><span class="line"><span class="type">3</span>. 校长姓名         | <span class="type">school</span>.schoolMaster.name       | <span class="type">结果: tianshubi</span></span><br><span class="line"><span class="number">5.</span> 字符串连接        | <span class="type">&#x27;校长是: &#x27; + school</span>.schoolMaster.name | <span class="type">结果: 校长是: tianshubi</span></span><br><span class="line"><span class="number">7.</span> 调用 toUpperCase 方法 | <span class="type">name</span>.toUpperCase()             | <span class="type">结果: XIAOMING</span></span><br><span class="line"><span class="number">6.</span> 三目运算         | <span class="type">school</span>.name == &#x27;ncepu&#x27; ? &#x27;是华电&#x27; : &#x27;不是华电&#x27; | <span class="type">结果: 是华电</span></span><br><span class="line"><span class="type"></span></span><br><span class="line"><span class="type">========== 演示结束 ==========</span></span><br><span class="line"><span class="type"></span></span><br><span class="line"><span class="type">进程已结束，退出代码为 0</span></span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>在上面示例中，</p>
+<ul>
+<li>根对象是student实例，context中设置了根对象和</li>
+<li>表达式有name、school.name、school.schoolMaster.name，三个是通过表达式获取root也就是student对象的相关属性</li>
+</ul>
+<h2 id="表达式语法"><a href="#表达式语法" class="headerlink" title="表达式语法"></a>表达式语法</h2><p>网上搬运过来的语法</p>
+<h4 id="1）通过-获取对象的属性或方法"><a href="#1）通过-获取对象的属性或方法" class="headerlink" title="1）通过.获取对象的属性或方法"></a>1）通过.获取对象的属性或方法</h4><figure class="highlight stylus"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">student</span><br><span class="line">student<span class="selector-class">.name</span></span><br><span class="line">student<span class="selector-class">.school</span></span><br><span class="line">student<span class="selector-class">.school</span><span class="selector-class">.name</span></span><br><span class="line">student<span class="selector-class">.takingClasses</span>(<span class="string">&quot;英语&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<h4 id="2）三种类型对象的获取"><a href="#2）三种类型对象的获取" class="headerlink" title="2）三种类型对象的获取"></a>2）三种类型对象的获取</h4><p>静态对象、静态方法和静态变量：@</p>
+<ul>
+<li>@java.lang.System@getProperty(“user.dir”)</li>
+<li>@java.lang.Math@abs(-111)</li>
+</ul>
+<p>非原生类型对象：#</p>
+<ul>
+<li>#student.name</li>
+<li>#student.takingClasses(“英语”)</li>
+</ul>
+<p>简单对象：直接获取</p>
+<ul>
+<li>“string”.lenth</li>
+<li>5</li>
+<li>true</li>
+</ul>
+<p>%符号的用途是在标志的属性为字符串类型时，告诉执行环境%{}里的是OGNL表达式并计算表达式的值。</p>
+<p>$在配置文件中引用OGNL表达式。</p>
+<h4 id="3）集合表达式"><a href="#3）集合表达式" class="headerlink" title="3）集合表达式"></a>3）集合表达式</h4><p>new创建实例：</p>
+<figure class="highlight coffeescript"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">new</span> java.lang.<span class="built_in">String</span>(<span class="string">&quot;testnew&quot;</span>)</span><br></pre></td></tr></table></figure>
+
+<p>{}和[]的用法：在OGNL中，可以用{}或者它的组合来创建列表、数组和map，[]可以获取下标元素。</p>
+<p>创建list：{value1,value2…}</p>
+<figure class="highlight css"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">&#123;<span class="number">1</span>,<span class="number">3</span>,<span class="number">5</span>&#125;<span class="selector-attr">[1]</span></span><br></pre></td></tr></table></figure>
+
+<p>创建数组：new type[]{value1,value2…}</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">new</span> int[]&#123;<span class="number">1</span>,<span class="number">3</span>,<span class="number">5</span>&#125;[<span class="number">0</span>]</span><br></pre></td></tr></table></figure>
+
+<p>创建map：#{key:value,key1:value1…}</p>
+<figure class="highlight autoit"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#&#123;<span class="string">&quot;name&quot;</span>:<span class="string">&quot;xiaoming&quot;</span>,<span class="string">&quot;school&quot;</span>:<span class="string">&quot;tsinghua&quot;</span>&#125;[<span class="string">&quot;school&quot;</span>]</span></span><br></pre></td></tr></table></figure>
+
+<p>扩展：OGNL与EL的区别</p>
+<img src="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/image-20260819045916420.png" class="" title="image-20260819045916420">
+
+<p>参考文章：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/LittleHann/p/17788847.html">Java OGNL表达式注入漏洞原理研究 - 郑瀚 - 博客园</a></p>
+<h1 id="OGNL漏洞成因"><a href="#OGNL漏洞成因" class="headerlink" title="OGNL漏洞成因"></a>OGNL漏洞成因</h1><p>exp：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> ognl.Ognl;</span><br><span class="line"><span class="keyword">import</span> ognl.OgnlContext;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Test</span> &#123;</span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> Exception &#123;</span><br><span class="line">        <span class="comment">// 创建一个OGNL上下文对象</span></span><br><span class="line">        <span class="type">OgnlContext</span> <span class="variable">context</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">OgnlContext</span>();</span><br><span class="line"></span><br><span class="line">        <span class="comment">// getValue()触发</span></span><br><span class="line">        <span class="comment">// @[类全名(包括包路径)]@[方法名|值名]</span></span><br><span class="line">        Ognl.getValue(<span class="string">&quot;@java.lang.Runtime@getRuntime().exec(&#x27;calc&#x27;)&quot;</span>, context, context.getRoot());</span><br><span class="line">        </span><br><span class="line">        <span class="comment">// setValue()触发</span></span><br><span class="line"><span class="comment">//        Ognl.setValue(Runtime.getRuntime().exec(&quot;calc&quot;), context, context.getRoot());</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<img src="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/image-20260819050055064.png" class="" title="image-20260819050055064">
+
+<p>首先跟到Ognl#getValue()方法这块</p>
+<img src="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/image-20260819051143923.png" class="" title="image-20260819051143923">
+
+<p>然后看到我们原先传入的对象会被会被强转为Node类型的实例，随后node会先调用getAccessor方法，跟进去看看，调试的时候发现确实不为空</p>
+<img src="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/image-20260819052243211.png" class="" title="image-20260819052243211">
+
+<p>进入到下方的getValue方法，跟进到SimpleNode#getValue</p>
+<img src="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/image-20260819053014109.png" class="" title="image-20260819053014109">
+
+<p>继续跟进发现进入到SimpleNode#evaluateGetValueBody方法中进而计算结果</p>
+<img src="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/image-20260819053330749.png" class="" title="image-20260819053330749">
+
+<p>随后会调用getValueBody，跟进的时候发现很多AST相关类会调用到这个方法</p>
+<img src="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/image-20260819053306948.png" class="" title="image-20260819053306948">
+
+<p>关注ASTStaticMethod中的getValueBody()方法</p>
+<img src="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/image-20260819053823880.png" class="" title="image-20260819053823880">
+
+<p>他会让OgnlRuntime对传入的context进行计算去进行一个计算，从而获取Runtime类并执行相关命令，我们也可以跟入到里边的callStaticMethod看看</p>
+<img src="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/image-20260819053935407.png" class="" title="image-20260819053935407">
+
+<p>很经典的反射调用类然后反射获取Method再执行命令cmd</p>
+<h1 id="框架中的OGNL表达式注入漏洞"><a href="#框架中的OGNL表达式注入漏洞" class="headerlink" title="框架中的OGNL表达式注入漏洞"></a>框架中的OGNL表达式注入漏洞</h1><p>Struts2：</p>
+<p>struts2-core-2.0.8.jar!\org\apache\struts2\dispatcher\FilterDispatcher.class#doFilter()-&gt;dispatcher.serviceAction-&gt;Dispatcher#serviceAction()-&gt;proxy.execute()</p>
+<p>translateVariables-&gt;OGNL表达式注入</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io">Timind</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/">http://timind-sec.github.io/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://timind-sec.github.io" target="_blank">Timind's café</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/k8s%E5%9F%BA%E7%A1%80/" title="k8s基础"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">k8s基础</div></div><div class="info-2"><div class="info-item-1">K8s架构组成Containers——容器 是什么：Kubernetes集群中的一台工作机器（可以是物理机，也可以是云上的虚拟机）。 角色：它负责提供计算资源（CPU、内存、磁盘）。每个Node上必须运行两个核心组件： kubelet：负责管理该节点上的容器和Pod。 容器运行时（如Docker、containerd）：负责真正拉取镜像和运行容器。   包含关系：Node 包含多个 Pod。  Pod 是什么：Kubernetes集群中的一台工作机器（可以是物理机，也可以是云上的虚拟机）。 角色：它负责提供计算资源（CPU、内存、磁盘）。每个Node上必须运行两个核心组件： kubelet：负责管理该节点上的容器和Pod。 容器运行时（如Docker、containerd）：负责真正拉取镜像和运行容器。   包含关系：Node 包含多个 Pod。  Container 是什么：一个轻量级的、可执行的软件包，里面包含了应用代码及其所有依赖（运行时、系统库）。 特性：它是真正运行代码的地方。 包含关系：Container被Pod包含，一个Pod里通常运行一个主要容器（业务应用），有时...</div></div></div></a><a class="pagination-related" href="/posts/fastjson%E6%97%A0gadget%E7%BB%95%E8%BF%87RCE/" title="Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记</div></div><div class="info-2"><div class="info-item-1">Fastjson 1.2.66–1.2.83 JsonType SSRF → RCE 漏洞学习笔记 复现环境：JDK 8u202 + fastjson 1.2.83 + Spring Boot Loader 2.7.18复现日期：2026-07-21   一、漏洞背景1.1 历史脉络fastjson 从 1.2.24 开始频繁爆出反序列化 RCE，官方逐步引入：    版本 防御措施    1.2.25 引入 AutoTypeSupport（默认关闭）+ 黑名单   1.2.42 黑名单改为哈希，增加 expectClass 校验   1.2.66 引入 @JSONType 注解资源探测——如果字节码含此注解，视为可信类型   1.2.68 引入 safeMode（默认关闭），开启后完全禁用 AutoType   本次漏洞的时间线：  1.2.66 引入了 @JSONType 资源探测逻辑，初衷是在 AutoType 关闭时仍能”信任”带注解的内部类型 该逻辑在 1.2.66 – 1.2.83 间一直存在 2025 年安全研究者发现：如果目标 ClassLoader 能解析 ja...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Timind</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">13</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">2</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">蠕动中</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E5%9F%BA%E7%A1%80"><span class="toc-number">1.</span> <span class="toc-text">OGNL表达式基础</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Java%E4%B8%AD%E7%9A%84%E5%AF%B9%E8%B1%A1%E5%9B%BE"><span class="toc-number">1.1.</span> <span class="toc-text">Java中的对象图</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#OGNL%E4%B8%89%E8%A6%81%E7%B4%A0"><span class="toc-number">1.2.</span> <span class="toc-text">OGNL三要素</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E8%A1%A8%E8%BE%BE%E5%BC%8F%E8%AF%AD%E6%B3%95"><span class="toc-number">1.3.</span> <span class="toc-text">表达式语法</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#1%EF%BC%89%E9%80%9A%E8%BF%87-%E8%8E%B7%E5%8F%96%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%B1%9E%E6%80%A7%E6%88%96%E6%96%B9%E6%B3%95"><span class="toc-number">1.3.0.1.</span> <span class="toc-text">1）通过.获取对象的属性或方法</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2%EF%BC%89%E4%B8%89%E7%A7%8D%E7%B1%BB%E5%9E%8B%E5%AF%B9%E8%B1%A1%E7%9A%84%E8%8E%B7%E5%8F%96"><span class="toc-number">1.3.0.2.</span> <span class="toc-text">2）三种类型对象的获取</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#3%EF%BC%89%E9%9B%86%E5%90%88%E8%A1%A8%E8%BE%BE%E5%BC%8F"><span class="toc-number">1.3.0.3.</span> <span class="toc-text">3）集合表达式</span></a></li></ol></li></ol></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#OGNL%E6%BC%8F%E6%B4%9E%E6%88%90%E5%9B%A0"><span class="toc-number">2.</span> <span class="toc-text">OGNL漏洞成因</span></a></li><li class="toc-item toc-level-1"><a class="toc-link" href="#%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E6%BC%8F%E6%B4%9E"><span class="toc-number">3.</span> <span class="toc-text">框架中的OGNL表达式注入漏洞</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E4%B8%80%E4%BA%9B%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E9%93%BE%E5%AD%90%E7%9A%84%E8%B7%9F%E8%B8%AA%E5%B0%8F%E8%AE%B0/" title="一些反序列化链子的跟踪小记">一些反序列化链子的跟踪小记</a><time datetime="2026-08-22T15:40:55.000Z" title="发表于 2026-08-22 23:40:55">2026-08-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/IAM%E5%9C%A8%E7%BA%BF%E9%9D%B6%E5%9C%BA%E7%BB%83%E4%B9%A0%E7%AC%94%E8%AE%B0/" title="IAM在线靶场练习笔记">IAM在线靶场练习笔记</a><time datetime="2026-08-20T18:34:54.000Z" title="发表于 2026-08-21 02:34:54">2026-08-21</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Pgsql%E5%8A%A0%E8%BD%BD%E6%81%B6%E6%84%8FXML%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" title="Pgsql加载恶意XML学习笔记">Pgsql加载恶意XML学习笔记</a><time datetime="2026-08-19T19:59:18.000Z" title="发表于 2026-08-20 03:59:18">2026-08-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/k8s%E5%9F%BA%E7%A1%80/" title="k8s基础">k8s基础</a><time datetime="2026-08-19T16:39:08.000Z" title="发表于 2026-08-20 00:39:08">2026-08-20</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/OGNL%E8%A1%A8%E8%BE%BE%E5%BC%8F%E6%B3%A8%E5%85%A5%E4%BB%A5%E5%8F%8A%E5%9C%A8Struts2%E6%A1%86%E6%9E%B6%E4%B8%AD%E7%9A%84%E6%BC%8F%E6%B4%9E%E5%88%A9%E7%94%A8/" title="OGNL表达式注入以及在Struts2框架中的漏洞利用">OGNL表达式注入以及在Struts2框架中的漏洞利用</a><time datetime="2026-08-18T20:11:46.000Z" title="发表于 2026-08-19 04:11:46">2026-08-19</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Timind</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.3</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
