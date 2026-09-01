@@ -1,0 +1,222 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>go语言学习的‘随便记记’ | Timind's café</title><meta name="author" content="Timind"><meta name="copyright" content="Timind"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="defer函数demo人如其名，主要是起一个延迟返回的作用 123456&#x2F;&#x2F;只展示部分代码func main()&#123;	defer fmt.Println(&quot;End&quot;)		fmt.Println(&quot;Hello 123&quot;)&#125;  输出： 12Hello 123End  发现defer语句虽然在普通语句前先声明，但实际执行的时候是会进行延迟处理的">
+<meta property="og:type" content="article">
+<meta property="og:title" content="go语言学习的‘随便记记’">
+<meta property="og:url" content="http://timind-sec.github.io/posts/go%E8%AF%AD%E8%A8%80%E5%AD%A6%E4%B9%A0%E7%9A%84%E2%80%98%E9%9A%8F%E4%BE%BF%E8%AE%B0%E8%AE%B0%E2%80%99/index.html">
+<meta property="og:site_name" content="Timind&#39;s café">
+<meta property="og:description" content="defer函数demo人如其名，主要是起一个延迟返回的作用 123456&#x2F;&#x2F;只展示部分代码func main()&#123;	defer fmt.Println(&quot;End&quot;)		fmt.Println(&quot;Hello 123&quot;)&#125;  输出： 12Hello 123End  发现defer语句虽然在普通语句前先声明，但实际执行的时候是会进行延迟处理的">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="http://timind-sec.github.io/img/avatar.jpg">
+<meta property="article:published_time" content="2026-08-28T23:11:10.000Z">
+<meta property="article:modified_time" content="2026-09-01T23:06:51.473Z">
+<meta property="article:author" content="Timind">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="http://timind-sec.github.io/img/avatar.jpg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "go语言学习的‘随便记记’",
+  "url": "http://timind-sec.github.io/posts/go%E8%AF%AD%E8%A8%80%E5%AD%A6%E4%B9%A0%E7%9A%84%E2%80%98%E9%9A%8F%E4%BE%BF%E8%AE%B0%E8%AE%B0%E2%80%99/",
+  "image": "http://timind-sec.github.io/img/avatar.jpg",
+  "datePublished": "2026-08-28T23:11:10.000Z",
+  "dateModified": "2026-09-01T23:06:51.473Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Timind",
+      "url": "http://timind-sec.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/favicon.svg"><link rel="canonical" href="http://timind-sec.github.io/posts/go%E8%AF%AD%E8%A8%80%E5%AD%A6%E4%B9%A0%E7%9A%84%E2%80%98%E9%9A%8F%E4%BE%BF%E8%AE%B0%E8%AE%B0%E2%80%99/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        if (!ttl) return
+        const expiry = Date.now() + ttl * 86400000
+        localStorage.setItem(key, JSON.stringify({ value, expiry }))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return undefined
+        const { value, expiry } = JSON.parse(itemStr)
+        if (Date.now() > expiry) {
+          localStorage.removeItem(key)
+          return undefined
+        }
+        return value
+      }
+    }
+
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => new Promise((resolve, reject) => {
+        const script = document.createElement('script')
+        script.src = url
+        script.async = true
+        Object.entries(attr).forEach(([key, val]) => script.setAttribute(key, val))
+        script.onload = script.onreadystatechange = () => {
+          if (!script.readyState || /loaded|complete/.test(script.readyState)) resolve()
+        }
+        script.onerror = reject
+        document.head.appendChild(script)
+      }),
+      getCSS: (url, id) => new Promise((resolve, reject) => {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = url
+        if (id) link.id = id
+        link.onload = link.onreadystatechange = () => {
+          if (!link.readyState || /loaded|complete/.test(link.readyState)) resolve()
+        }
+        link.onerror = reject
+        document.head.appendChild(link)
+      }),
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const activateDarkMode = () => {
+        document.documentElement.setAttribute('data-theme', 'dark')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.setAttribute('data-theme', 'light')
+        if (document.querySelector('meta[name="theme-color"]') !== null) {
+          document.querySelector('meta[name="theme-color"]').setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'go语言学习的‘随便记记’',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><link rel="stylesheet" href="/css/custom.css"><meta name="generator" content="Hexo 7.3.0"></head><body><div id="web_bg" style="background-image: url(/img/background.jpg);"></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/top_img2.jpg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Timind's café</span></a><a class="nav-page-title" href="/"><span class="site-name">go语言学习的‘随便记记’</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"></div></nav><div id="post-info"><h1 class="post-title">go语言学习的‘随便记记’</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-08-28T23:11:10.000Z" title="发表于 2026-08-29 07:11:10">2026-08-29</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-09-01T23:06:51.473Z" title="更新于 2026-09-02 07:06:51">2026-09-02</time></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><h1 id="defer函数"><a href="#defer函数" class="headerlink" title="defer函数"></a>defer函数</h1><h2 id="demo"><a href="#demo" class="headerlink" title="demo"></a>demo</h2><p>人如其名，主要是起一个延迟返回的作用</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//只展示部分代码</span></span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	<span class="keyword">defer</span> fmt.Println(<span class="string">&quot;End&quot;</span>)</span><br><span class="line">	</span><br><span class="line">	fmt.Println(<span class="string">&quot;Hello 123&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<figure class="highlight ada"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Hello <span class="number">123</span></span><br><span class="line"><span class="keyword">End</span></span><br></pre></td></tr></table></figure>
+
+<p>发现defer语句虽然在普通语句前先声明，但实际执行的时候是会进行延迟处理的</p>
+<p>所以defer一般可以结合文件回收、文件关闭或者资源回收的操作</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	<span class="keyword">defer</span> fmt.Println(<span class="string">&quot;defer1&quot;</span>)</span><br><span class="line">	<span class="keyword">defer</span> fmt.Println(<span class="string">&quot;defer2&quot;</span>)</span><br><span class="line">	<span class="keyword">defer</span> fmt.Println(<span class="string">&quot;defer3&quot;</span>)</span><br><span class="line">	fmt.Println(<span class="string">&quot;Hello 123&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">defer3</span></span><br><span class="line"><span class="attribute">defer2</span></span><br><span class="line"><span class="attribute">defer1</span></span><br><span class="line"><span class="attribute">Hello</span> <span class="number">123</span></span><br></pre></td></tr></table></figure>
+
+<p>显而易见可以看到defer是按照栈的方式去进行数据处理的，先进先出</p>
+<p>匿名函数demo</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	<span class="keyword">defer</span> fmt.Println(<span class="string">&quot;defer1&quot;</span>)</span><br><span class="line">	<span class="keyword">defer</span> fmt.Println(<span class="string">&quot;defer2&quot;</span>)</span><br><span class="line">	<span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span>&#123;</span><br><span class="line">        fmt.Println(<span class="string">&quot;defer3&quot;</span>) <span class="comment">//匿名函数，前面部分直接作为函数名，加一个()可直接调用</span></span><br><span class="line">    &#125;()</span><br><span class="line">	fmt.Println(<span class="string">&quot;Hello 123&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">defer3</span></span><br><span class="line"><span class="attribute">defer2</span></span><br><span class="line"><span class="attribute">defer1</span></span><br><span class="line"><span class="attribute">Hello</span> <span class="number">123</span></span><br></pre></td></tr></table></figure>
+
+<p>有名函数demo</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">test</span><span class="params">()</span></span>&#123;</span><br><span class="line">	fmt.Println(<span class="string">&quot;defer2&quot;</span>)</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	<span class="keyword">defer</span> fmt.Println(<span class="string">&quot;defer1&quot;</span>)</span><br><span class="line">	test()      <span class="comment">//调用有名函数</span></span><br><span class="line">	<span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span>&#123;</span><br><span class="line">        fmt.Println(<span class="string">&quot;defer3&quot;</span>) <span class="comment">//匿名函数，前面部分直接作为函数名，加一个()可直接调用</span></span><br><span class="line">    &#125;()</span><br><span class="line">	fmt.Println(<span class="string">&quot;Hello 123&quot;</span>)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">defer3</span></span><br><span class="line"><span class="attribute">defer2</span></span><br><span class="line"><span class="attribute">defer1</span></span><br><span class="line"><span class="attribute">Hello</span> <span class="number">123</span></span><br></pre></td></tr></table></figure>
+
+<p>发现依然是一样的</p>
+<p>赋值demo</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">test</span><span class="params">()</span></span> <span class="type">int</span>&#123;</span><br><span class="line">	num:=<span class="number">10</span></span><br><span class="line">	<span class="keyword">defer</span> fmt.Println(num)</span><br><span class="line">	num++</span><br><span class="line">	<span class="keyword">return</span> num</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	res:=test()</span><br><span class="line">	fmt.Println(res)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">10</span><br><span class="line">11</span><br></pre></td></tr></table></figure>
+
+<p>从输出我们可以看到，程序是先打印了值为10的num，再去进行‘++’操作，然后返回到main函数里边的test()</p>
+<p>嘶，按道理来说在test()种不应该是先++，再延迟打印出值为11的num吗？</p>
+<p>这里边就涉及到一个比较关键的特点，<strong>赋值确定</strong></p>
+<p>在num赋值后，它传入到了defer中，已经确认好了是要打印10，再执行的num++。要打印的值，defer语句中已经确认了，所以它会直接输出10，而不是等到先执行后面的++操作</p>
+<p>而现在另外一种情况。。。如果在test()中使用匿名函数呢？</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">test</span><span class="params">()</span></span> <span class="type">int</span>&#123;</span><br><span class="line">	num:=<span class="number">10</span></span><br><span class="line">	<span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span>&#123;</span><br><span class="line">		fmt.Println(num)</span><br><span class="line">	&#125;()</span><br><span class="line">	num++</span><br><span class="line">	<span class="keyword">return</span> num</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	res:=test()</span><br><span class="line">	fmt.Println(res)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">11</span><br><span class="line">11</span><br></pre></td></tr></table></figure>
+
+<p>defer定义的匿名函数调用的顺序会比后面的操作会延迟</p>
+<p>如果说考虑返回值呢</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">test</span><span class="params">()</span></span> <span class="type">int</span>&#123;</span><br><span class="line">	num:=<span class="number">10</span></span><br><span class="line">	<span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span>&#123;</span><br><span class="line">		num++</span><br><span class="line">	&#125;()</span><br><span class="line">	</span><br><span class="line">	<span class="keyword">return</span> num</span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	res:=test()</span><br><span class="line">	fmt.Println(res)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">10</span><br></pre></td></tr></table></figure>
+
+<p>可以看到defer定义的匿名函数中的num++并没有被执行，所以和前面的一样的道理，匿名函数依旧慢一步，直接先return了，但实际细节不然。</p>
+<p>程序执行顺序：</p>
+<figure class="highlight apache"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="attribute">1</span>、计算num值-》<span class="number">2</span>、执行defer-》<span class="number">3</span>、return返回值</span><br></pre></td></tr></table></figure>
+
+<p>但是在上面的demo中，要返回的num值已经计算好了就是10，尽管它执行了defer，但依然不会影响最终的返回值</p>
+<figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">test</span><span class="params">(num <span class="type">int</span>)</span></span>&#123;</span><br><span class="line">	num = <span class="number">10</span></span><br><span class="line">	<span class="keyword">defer</span> <span class="function"><span class="keyword">func</span><span class="params">()</span></span>&#123;</span><br><span class="line">		num++</span><br><span class="line">	&#125;()</span><br><span class="line">	<span class="keyword">return</span> <span class="comment">//默认返回num值</span></span><br><span class="line">&#125;</span><br><span class="line"><span class="function"><span class="keyword">func</span> <span class="title">main</span><span class="params">()</span></span>&#123;</span><br><span class="line">	res:=test()</span><br><span class="line">	fmt.Println(res)</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>输出：</p>
+<figure class="highlight"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">11</span><br></pre></td></tr></table></figure>
+
+<p>这里就涉及到了命名返回值和普通返回值的差别了，在前一个例子中，num是在test函数中声明的，所以在test中它是已经赋值好的了，但是这个例子中，num是作为命名返回值，最终test也是操作这个变量，需要进行完整的步骤才能进行命名变量值的返回</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io">Timind</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="http://timind-sec.github.io/posts/go%E8%AF%AD%E8%A8%80%E5%AD%A6%E4%B9%A0%E7%9A%84%E2%80%98%E9%9A%8F%E4%BE%BF%E8%AE%B0%E8%AE%B0%E2%80%99/">http://timind-sec.github.io/posts/go%E8%AF%AD%E8%A8%80%E5%AD%A6%E4%B9%A0%E7%9A%84%E2%80%98%E9%9A%8F%E4%BE%BF%E8%AE%B0%E8%AE%B0%E2%80%99/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="http://timind-sec.github.io" target="_blank">Timind's café</a>！</span></div></div><div class="tag_share"><div class="post-share"><div class="social-share" data-image="/img/avatar.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/posts/HTB%E9%9D%B6%E6%9C%BA-Medium-DevHub-writeup/" title="HTB靶机(Medium)-DevHub-writeup"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">HTB靶机(Medium)-DevHub-writeup</div></div><div class="info-2"><div class="info-item-1">DevHub本人这里是在Windows下渗透（），配置相对来说比较简单，使用OpenVPN GUI配置好vpn文件，然后再设置一个走clash的代理，然后因为openvpn connect貌似只能支持TCP连接，所以下配置文件的时候注意一下最好下tcp连接到.ovpn文件   信息搜集使用nmap进行初步扫描   访问80端口服务   对了，如果访问发现显示找不到devhub.htb大概率是因为主机dns服务的配置问题，直接在C:\Windows\System32\drivers\etc\host的最底下添加这一行10.129.245.216 devhub.htb，就能正常访问了，然后我们可以看到他暴露了一个mcp的调试服务6274端口 http://devhub.htb:6274/ 访问看看是一个MCP Jam服务   反弹shell查看相关poc发现该mcp服务在2026年1月份爆出来了一个rce漏洞，poc地址：boroeurnprach&#x2F;CVE-2026-23744-PoC: CVE-2026-23744 - Versions 1.4.2 and earlier...</div></div></div></a><a class="pagination-related" href="/posts/%E5%9F%9F%E5%A7%94%E6%B4%BE%E6%94%BB%E5%87%BB%E7%AC%94%E8%AE%B0/" title="域委派攻击笔记"><div class="cover" style="background: var(--default-bg-color)"></div><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">域委派攻击笔记</div></div><div class="info-2"><div class="info-item-1">非约束委派攻击利用原理普通域用户先向DC域控请求TGT，DC校验身份后返回TGT，然后域用户再向DC要TGS（针对服务A的访问权限），DC返回TGS，然后该用户拿着TGS跟服务A进行认证，并将TGT委托给服务A；经过TGS相关鉴权之后，服务A就会拿着该域用户委派给他的TGT询问DC要一个TGS去访问服务B，然后他又可以用TGS去访问B，跟前面域用户访问服务A一个道理，但是少了TGT的委派，TGT还是在服务A受伤 在上述过程中，服务A获取了被委派用户的TGT，并将TGT缓存到了自己的lsass进程中。其中非约束委派这个属性一般都是赋予给域控的，需要设置SeEnableDelegation特权 从攻击调度上来看，如果攻击者拿到了一个非约束委派的机器A，那么他如果能够模拟DC委派他去访问某个特定的服务，那么A就可以将DC给他的TGT缓存在自身的lsass进程中，然后A就可以利用这个TGT去访问域内的所有其他服务 查询非约束委派主机服务注册一个服务账号setspn -A https/web web，客户能通过http访问该服务 在服务账号设置非约束委派属性后，主机有个字段值会发生相应改变...</div></div></div></a></nav></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.jpg" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Timind</div><div class="author-info-description"></div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">15</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">3</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">0</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">蠕动中</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#defer%E5%87%BD%E6%95%B0"><span class="toc-number">1.</span> <span class="toc-text">defer函数</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#demo"><span class="toc-number">1.1.</span> <span class="toc-text">demo</span></a></li></ol></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/HTB%E9%9D%B6%E6%9C%BA-Medium-DevHub-writeup/" title="HTB靶机(Medium)-DevHub-writeup">HTB靶机(Medium)-DevHub-writeup</a><time datetime="2026-09-01T22:01:19.000Z" title="发表于 2026-09-02 06:01:19">2026-09-02</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/go%E8%AF%AD%E8%A8%80%E5%AD%A6%E4%B9%A0%E7%9A%84%E2%80%98%E9%9A%8F%E4%BE%BF%E8%AE%B0%E8%AE%B0%E2%80%99/" title="go语言学习的‘随便记记’">go语言学习的‘随便记记’</a><time datetime="2026-08-28T23:11:10.000Z" title="发表于 2026-08-29 07:11:10">2026-08-29</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E5%9F%9F%E5%A7%94%E6%B4%BE%E6%94%BB%E5%87%BB%E7%AC%94%E8%AE%B0/" title="域委派攻击笔记">域委派攻击笔记</a><time datetime="2026-08-28T17:26:56.000Z" title="发表于 2026-08-29 01:26:56">2026-08-29</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/%E4%B8%80%E4%BA%9B%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%E9%93%BE%E5%AD%90%E7%9A%84%E8%B7%9F%E8%B8%AA%E5%B0%8F%E8%AE%B0/" title="一些反序列化链子的跟踪小记">一些反序列化链子的跟踪小记</a><time datetime="2026-08-22T15:40:55.000Z" title="发表于 2026-08-22 23:40:55">2026-08-22</time></div></div><div class="aside-list-item no-cover"><div class="content"><a class="title" href="/posts/Pgsql%E5%8A%A0%E8%BD%BD%E6%81%B6%E6%84%8FXML%E5%AD%A6%E4%B9%A0%E7%AC%94%E8%AE%B0/" title="Pgsql加载恶意XML学习笔记">Pgsql加载恶意XML学习笔记</a><time datetime="2026-08-19T19:59:18.000Z" title="发表于 2026-08-20 03:59:18">2026-08-20</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Timind</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 7.3.0</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.4.3</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js"></script><script src="/js/main.js"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
